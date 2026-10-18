@@ -23,3 +23,8 @@ pub use order::{
     FillReport, OrderAck, OrderRequest, OrderSide, OrderStatus, OrderType, TimeInForce,
 };
 pub use types::{Currency, Exchange, InstrumentId, Money, Price, PriceBand, Quantity};
+
+// Re-export foundational external crates for version consistency
+pub use chrono;
+pub use rust_decimal;
+pub use uuid;

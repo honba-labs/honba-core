@@ -5,6 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::error::CoreError;
 use crate::types::{InstrumentId, Price, Quantity};
 
 /// Order side.
@@ -158,6 +159,55 @@ impl OrderRequest {
             algo_id: algo_id.into(),
             tag: None,
         }
+    }
+
+    /// Validate the order request according to SEBI and Indian market rules.
+    pub fn validate(&self) -> Result<(), CoreError> {
+        if self.algo_id.trim().is_empty() {
+            return Err(CoreError::Validation(
+                "algo_id is mandatory and cannot be empty per SEBI Retail Algo circular".into(),
+            ));
+        }
+        if !self.quantity.is_positive() {
+            return Err(CoreError::Validation(
+                "order quantity must be strictly positive".into(),
+            ));
+        }
+        if self.instrument.symbol.trim().is_empty() {
+            return Err(CoreError::Validation(
+                "instrument symbol cannot be empty".into(),
+            ));
+        }
+        match self.order_type {
+            OrderType::Limit(p) => {
+                if !p.is_positive() {
+                    return Err(CoreError::Validation(
+                        "limit price must be strictly positive".into(),
+                    ));
+                }
+            }
+            OrderType::StopLoss(p) => {
+                if !p.is_positive() {
+                    return Err(CoreError::Validation(
+                        "stop-loss trigger price must be strictly positive".into(),
+                    ));
+                }
+            }
+            OrderType::StopLimit { trigger, limit } => {
+                if !trigger.is_positive() {
+                    return Err(CoreError::Validation(
+                        "stop-limit trigger price must be strictly positive".into(),
+                    ));
+                }
+                if !limit.is_positive() {
+                    return Err(CoreError::Validation(
+                        "stop-limit limit price must be strictly positive".into(),
+                    ));
+                }
+            }
+            OrderType::Market => {}
+        }
+        Ok(())
     }
 }
 
