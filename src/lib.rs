@@ -20,7 +20,8 @@ pub use decision::Decision;
 pub use error::CoreError;
 pub use market::{Bar, DepthLevel, Tick};
 pub use order::{
-    FillReport, OrderAck, OrderRequest, OrderSide, OrderStatus, OrderType, TimeInForce,
+    CancelRequest, FillReport, ModifyRequest, OrderAck, OrderRequest, OrderSide,
+    OrderStatus, OrderType, TimeInForce,
 };
 pub use types::{Currency, Exchange, InstrumentId, Money, Price, PriceBand, Quantity};
 

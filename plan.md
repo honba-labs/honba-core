@@ -55,32 +55,33 @@
   - [x] `Tick { symbol, timestamp, ltp, volume, bid, ask, band }`.
   - [x] `Bar { symbol, start_time, open, high, low, close, volume }`.
   - [x] `PriceBand { lower, upper }`: Scrip-wise operational circuit filters.
-- [ ] **2.2 Execution & Order Wire Contracts**
-  - [ ] `OrderRequest`: Outbound order intent (symbol, side, order_type, qty, price, product, algo_id).
-  - [ ] `OrderAck`: Broker confirmation with client order ID (`clOrdId`) and exchange order ID.
-  - [ ] `FillReport`: Execution fill details (qty, price, timestamp, execution_id, fees).
-  - [ ] `CancelRequest` & `ModifyRequest`.
+- [x] **2.2 Execution & Order Wire Contracts**
+  - [x] `OrderRequest`: Outbound order intent (symbol, side, order_type, qty, price, product, algo_id).
+  - [x] `OrderAck`: Broker confirmation with client order ID (`clOrdId`) and exchange order ID.
+  - [x] `FillReport`: Execution fill details (qty, price, timestamp, execution_id, fees).
+  - [x] `CancelRequest`: Cancel request for existing order.
+  - [x] `ModifyRequest`: Modify request for existing order.
 
 ### Phase 3: AI-Native Closed Decision Grammar (M2) — Week 5–6
-- [ ] **3.1 `Decision` Enum Implementation**
-  - [ ] Implement `Decision` with `#[serde(deny_unknown_fields)]`:
+- [x] **3.1 `Decision` Enum Implementation**
+  - [x] Implement `Decision` with `#[serde(deny_unknown_fields)]`:
     - `PlaceOrder`, `ModifyOrder`, `CancelOrder`, `CancelAll`, `Hold`.
-  - [ ] Integrate mandatory SEBI `algo_id` validation in `PlaceOrder`.
-- [ ] **3.2 Serialization Invariants & Fuzzing**
-  - [ ] Property test serde serialization/deserialization across random vectors.
-  - [ ] Assert that malformed JSON or unknown keys fail deserialization immediately.
+  - [x] Integrate mandatory SEBI `algo_id` validation in `PlaceOrder`.
+- [x] **3.2 Serialization Invariants & Fuzzing**
+  - [x] Property tests verifying serde serialization/deserialization across random vectors.
+  - [x] Assert that malformed JSON or unknown keys fail deserialization immediately.
 
 ### Phase 4: Schema Export & Automated Codegen Pipeline (M3) — Week 7–8
-- [ ] **4.1 `schemars` Derivations**
-  - [ ] Ensure all domain types implement `JsonSchema`.
-  - [ ] Verify clean JSON Schema export for `schema/domain/domain_schema.json`.
-- [ ] **4.2 Golden Vector Alignment**
-  - [ ] Ensure golden conformance vectors in `schema/golden/` deserialize without discrepancies.
+- [x] **4.1 `schemars` Derivations**
+  - [x] Ensure all domain types implement `JsonSchema`.
+  - [x] Verify clean JSON Schema export for `schema/domain/domain_schema.json`.
+- [x] **4.2 Golden Vector Alignment**
+  - [x] Ensure golden conformance vectors in `schema/golden/` deserialize without discrepancies.
 
 ---
 
 ## 3. Verification & CI Test Suite
 
-- [ ] `cargo test -p honba-core`: Full unit test coverage for dimensional arithmetic and serialization.
-- [ ] `proptest`: Property tests verifying dimensional invariants ($\text{Price} \times \text{Quantity} = \text{Money}$).
-- [ ] AST lint checks ensuring zero usage of `f32`/`f64` throughout `honba-core/src/`.
+- [x] `cargo test -p honba-core`: Full unit test coverage for dimensional arithmetic and serialization.
+- [x] `proptest`: Property tests verifying dimensional invariants ($\text{Price} \times \text{Quantity} = \text{Money}$).
+- [x] AST lint checks ensuring zero usage of `f32`/`f64` throughout `honba-core/src/`.

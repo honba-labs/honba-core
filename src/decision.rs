@@ -8,22 +8,25 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::error::CoreError;
-use crate::types::{Exchange, Price, Quantity};
+use crate::types::{Price, Quantity};
+use crate::order::OrderSide;
 
 /// Closed enum representing all permissible strategy decisions.
 ///
 /// NOTE: Uses `deny_unknown_fields` to prevent LLMs from injecting hallucinations
-/// or extra unauthorized parameters.
+/// or extra unauthorized parameters. This is the closed decision grammar
+// that feeds into the risk gate and execution service.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "action", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Decision {
-    /// Buy decision
-    Buy {
-        /// Symbol to purchase (e.g. "RELIANCE")
+    /// Place a new order (buy or sell).
+    ///
+    /// SEBI Retail Algo Circular mandates a non-empty `algo_id`.
+    PlaceOrder {
+        /// Symbol to trade (e.g. "RELIANCE")
         symbol: String,
-        /// Target exchange (defaults to NSE if omitted)
-        #[serde(default = "default_nse")]
-        exchange: Exchange,
+        /// Order side
+        side: OrderSide,
         /// Desired quantity
         qty: Quantity,
         /// Limit price ceiling (optional; if None, market order requested)
@@ -35,29 +38,32 @@ pub enum Decision {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         rationale: Option<String>,
     },
-    /// Sell decision
-    Sell {
-        /// Symbol to sell
-        symbol: String,
-        /// Target exchange
-        #[serde(default = "default_nse")]
-        exchange: Exchange,
-        /// Desired quantity
-        qty: Quantity,
-        /// Limit price floor (optional; if None, market order requested)
+    /// Modify an existing order's quantity or price.
+    ModifyOrder {
+        /// Instrument to modify
+        instrument: crate::types::InstrumentId,
+        /// New desired quantity (None leaves quantity unchanged)
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        price_limit: Option<Price>,
+        new_qty: Option<Quantity>,
+        /// New limit price if applicable (None leaves price unchanged)
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        new_price: Option<Price>,
         /// Mandatory algo ID for SEBI audit trail
         algo_id: String,
         /// Optional reasoning from the model
         #[serde(default, skip_serializing_if = "Option::is_none")]
         rationale: Option<String>,
     },
-    /// Hold decision (no market action)
-    Hold {
-        /// Explanation for holding
+    /// Cancel an existing order.
+    CancelOrder {
+        /// Instrument to cancel
+        instrument: crate::types::InstrumentId,
+        /// Algo ID to cancel (if None, cancel all algos for this instrument)
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        reason: Option<String>,
+        algo_id: Option<String>,
+        /// Optional reasoning from the model
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        rationale: Option<String>,
     },
     /// Emergency cancel-all decision
     CancelAll {
@@ -68,11 +74,14 @@ pub enum Decision {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         reason: Option<String>,
     },
+    /// Hold decision (no market action)
+    Hold {
+        /// Explanation for holding
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        reason: Option<String>,
+    },
 }
 
-fn default_nse() -> Exchange {
-    Exchange::Nse
-}
 
 impl Decision {
     /// Validate that the decision adheres to structural sanity rules:
@@ -82,15 +91,9 @@ impl Decision {
     /// - Algo IDs must not be empty.
     pub fn validate(&self) -> Result<(), CoreError> {
         match self {
-            Self::Buy {
+            Self::PlaceOrder {
                 symbol,
-                qty,
-                price_limit,
-                algo_id,
-                ..
-            }
-            | Self::Sell {
-                symbol,
+                side: _,
                 qty,
                 price_limit,
                 algo_id,
@@ -118,7 +121,37 @@ impl Decision {
                 }
                 Ok(())
             }
-            Self::Hold { .. } | Self::CancelAll { .. } => Ok(()),
+            Self::ModifyOrder {
+                instrument: _,
+                new_qty: _,
+                new_price: _,
+                algo_id,
+                ..
+            } => {
+                if algo_id.trim().is_empty() {
+                    return Err(CoreError::Validation("algo_id cannot be empty".to_string()));
+                }
+                Ok(())
+            }
+            Self::CancelOrder {
+                instrument: _,
+                algo_id,
+                ..
+            } => {
+                if algo_id.as_ref().map_or(true, |a| a.trim().is_empty()) {
+                    return Err(CoreError::Validation("algo_id cannot be empty".to_string()));
+                }
+                Ok(())
+            }
+            Self::CancelAll { algo_id, .. } => {
+                if let Some(a) = algo_id {
+                    if a.trim().is_empty() {
+                        return Err(CoreError::Validation("algo_id cannot be empty".to_string()));
+                    }
+                }
+                Ok(())
+            }
+            Self::Hold { .. } => Ok(()),
         }
     }
 

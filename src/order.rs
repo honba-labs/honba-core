@@ -4,8 +4,6 @@ use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
-use crate::error::CoreError;
 use crate::types::{InstrumentId, Price, Quantity};
 
 /// Order side.
@@ -115,6 +113,39 @@ impl OrderStatus {
     }
 }
 
+/// Cancel request for an existing order.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct CancelRequest {
+    /// Instrument to cancel
+    pub instrument: InstrumentId,
+    /// Client order ID of the order to cancel
+    pub client_order_id: Uuid,
+    /// Algo ID to cancel (if None, cancel all algos for this instrument)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub algo_id: Option<String>,
+    /// Optional client ID
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_id: Option<String>,
+}
+
+/// Modify request for an existing order.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct ModifyRequest {
+    /// Instrument to modify
+    pub instrument: InstrumentId,
+    /// New quantity (None leaves quantity unchanged)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub new_qty: Option<Quantity>,
+    /// New limit price if applicable (None leaves price unchanged)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub new_price: Option<Price>,
+    /// Algo ID associated with the modification
+    pub algo_id: String,
+    /// Optional client ID
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_id: Option<String>,
+}
+
 /// Request to place a new order.
 ///
 /// NOTE: In compliance with SEBI's Retail Algo Circular, every order request
@@ -190,55 +221,6 @@ impl OrderRequest {
     /// Get client ID or fallback to "default".
     pub fn client_id_str(&self) -> &str {
         self.client_id.as_deref().unwrap_or("default")
-    }
-
-    /// Validate the order request according to SEBI and Indian market rules.
-    pub fn validate(&self) -> Result<(), CoreError> {
-        if self.algo_id.trim().is_empty() {
-            return Err(CoreError::Validation(
-                "algo_id is mandatory and cannot be empty per SEBI Retail Algo circular".into(),
-            ));
-        }
-        if !self.quantity.is_positive() {
-            return Err(CoreError::Validation(
-                "order quantity must be strictly positive".into(),
-            ));
-        }
-        if self.instrument.symbol.trim().is_empty() {
-            return Err(CoreError::Validation(
-                "instrument symbol cannot be empty".into(),
-            ));
-        }
-        match self.order_type {
-            OrderType::Limit(p) => {
-                if !p.is_positive() {
-                    return Err(CoreError::Validation(
-                        "limit price must be strictly positive".into(),
-                    ));
-                }
-            }
-            OrderType::StopLoss(p) => {
-                if !p.is_positive() {
-                    return Err(CoreError::Validation(
-                        "stop-loss trigger price must be strictly positive".into(),
-                    ));
-                }
-            }
-            OrderType::StopLimit { trigger, limit } => {
-                if !trigger.is_positive() {
-                    return Err(CoreError::Validation(
-                        "stop-limit trigger price must be strictly positive".into(),
-                    ));
-                }
-                if !limit.is_positive() {
-                    return Err(CoreError::Validation(
-                        "stop-limit limit price must be strictly positive".into(),
-                    ));
-                }
-            }
-            OrderType::Market => {}
-        }
-        Ok(())
     }
 }
 
