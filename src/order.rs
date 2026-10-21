@@ -138,6 +138,12 @@ pub struct OrderRequest {
     /// Optional strategy user tag
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tag: Option<String>,
+    /// Optional client ID / account ID
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_id: Option<String>,
+    /// Optional correlation ID for tracing across async actor hops
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub correlation_id: Option<Uuid>,
 }
 
 impl OrderRequest {
@@ -149,8 +155,9 @@ impl OrderRequest {
         quantity: Quantity,
         algo_id: impl Into<String>,
     ) -> Self {
+        let client_order_id = Uuid::new_v4();
         Self {
-            client_order_id: Uuid::new_v4(),
+            client_order_id,
             instrument,
             side,
             order_type,
@@ -158,7 +165,31 @@ impl OrderRequest {
             tif: TimeInForce::Day,
             algo_id: algo_id.into(),
             tag: None,
+            client_id: None,
+            correlation_id: Some(client_order_id),
         }
+    }
+
+    /// Attach a client or account ID.
+    pub fn with_client_id(mut self, client_id: impl Into<String>) -> Self {
+        self.client_id = Some(client_id.into());
+        self
+    }
+
+    /// Attach an explicit correlation ID.
+    pub fn with_correlation_id(mut self, correlation_id: Uuid) -> Self {
+        self.correlation_id = Some(correlation_id);
+        self
+    }
+
+    /// Get correlation ID, falling back to client_order_id.
+    pub fn correlation_id(&self) -> Uuid {
+        self.correlation_id.unwrap_or(self.client_order_id)
+    }
+
+    /// Get client ID or fallback to "default".
+    pub fn client_id_str(&self) -> &str {
+        self.client_id.as_deref().unwrap_or("default")
     }
 
     /// Validate the order request according to SEBI and Indian market rules.
@@ -225,6 +256,42 @@ pub struct OrderAck {
     pub status: OrderStatus,
     /// Acknowledgment timestamp
     pub timestamp: DateTime<Utc>,
+    /// Distributed trace correlation ID
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub correlation_id: Option<Uuid>,
+    /// Optional client ID
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_id: Option<String>,
+}
+
+impl OrderAck {
+    /// Create a new order acknowledgement.
+    pub fn new(
+        order_id: impl Into<String>,
+        client_order_id: Uuid,
+        status: OrderStatus,
+        timestamp: DateTime<Utc>,
+    ) -> Self {
+        Self {
+            order_id: order_id.into(),
+            client_order_id,
+            exchange_order_id: None,
+            status,
+            timestamp,
+            correlation_id: Some(client_order_id),
+            client_id: None,
+        }
+    }
+
+    /// Returns correlation ID or falls back to client_order_id.
+    pub fn correlation_id(&self) -> Uuid {
+        self.correlation_id.unwrap_or(self.client_order_id)
+    }
+
+    /// Returns client ID or "default".
+    pub fn client_id_str(&self) -> &str {
+        self.client_id.as_deref().unwrap_or("default")
+    }
 }
 
 /// Execution fill report.
@@ -248,4 +315,50 @@ pub struct FillReport {
     pub algo_id: String,
     /// Execution timestamp
     pub timestamp: DateTime<Utc>,
+    /// Distributed trace correlation ID
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub correlation_id: Option<Uuid>,
+    /// Optional client ID
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_id: Option<String>,
+}
+
+impl FillReport {
+    /// Create a new fill report.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        fill_id: impl Into<String>,
+        order_id: impl Into<String>,
+        client_order_id: Uuid,
+        instrument: InstrumentId,
+        side: OrderSide,
+        price: Price,
+        quantity: Quantity,
+        algo_id: impl Into<String>,
+        timestamp: DateTime<Utc>,
+    ) -> Self {
+        Self {
+            fill_id: fill_id.into(),
+            order_id: order_id.into(),
+            client_order_id,
+            instrument,
+            side,
+            price,
+            quantity,
+            algo_id: algo_id.into(),
+            timestamp,
+            correlation_id: Some(client_order_id),
+            client_id: None,
+        }
+    }
+
+    /// Returns correlation ID or falls back to client_order_id.
+    pub fn correlation_id(&self) -> Uuid {
+        self.correlation_id.unwrap_or(self.client_order_id)
+    }
+
+    /// Returns client ID or "default".
+    pub fn client_id_str(&self) -> &str {
+        self.client_id.as_deref().unwrap_or("default")
+    }
 }
