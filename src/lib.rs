@@ -30,8 +30,8 @@ pub use instrument::{
 };
 pub use market::{Bar, DepthLevel, Tick};
 pub use order::{
-    CancelRequest, FillReport, ModifyRequest, OrderAck, OrderEvent, OrderEventKind, OrderRequest,
-    OrderSide, OrderStatus, OrderType, RejectReason, TimeInForce,
+    CancelRequest, FeeBreakdown, FillReport, ModifyRequest, OrderAck, OrderEvent, OrderEventKind,
+    OrderRequest, OrderSide, OrderStatus, OrderType, RejectReason, TimeInForce,
 };
 pub use portfolio::{
     PortfolioAccount, PortfolioGreeks, PortfolioHolding, PortfolioMode, PortfolioPosition,
@@ -61,7 +61,11 @@ pub use types::{Currency, Exchange, InstrumentId, MinorUnit, Money, Price, Price
 /// screener, cross-subsystem domain events, and the `ports` module —
 /// the real home for symbols that used to live in the now-empty
 /// `honba-kokoro-{entities,messages,ports}` marker crates.
-pub const SCHEMA_VERSION: u32 = 6;
+///
+/// v7: added `FillReport::fee`/`fee_breakdown` (`FeeBreakdown`) — the
+/// contract for per-fill transaction costs; the statutory calculation
+/// itself lives in `honba-me-market::india::costs`.
+pub const SCHEMA_VERSION: u32 = 7;
 
 /// Semantic version of the REST endpoint surface.
 pub const API_VERSION: &str = "v1";

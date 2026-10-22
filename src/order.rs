@@ -1,6 +1,6 @@
 //! Canonical order models, state machine statuses, and execution reports.
 
-use crate::types::{InstrumentId, Price, Quantity};
+use crate::types::{InstrumentId, Money, Price, Quantity};
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -303,10 +303,25 @@ pub struct FillReport {
     /// Optional client ID
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client_id: Option<String>,
+    /// Total transaction cost charged on this fill (brokerage, statutory
+    /// levies, and exchange charges combined), in the fill's currency.
+    ///
+    /// Defaults to zero for callers that don't yet have cost data (e.g. a
+    /// simulated/paper fill). The statutory calculation itself lives in
+    /// `honba-me` (`honba-me-market::india::costs`); this crate only owns
+    /// the contract.
+    #[serde(default = "Money::zero_inr")]
+    pub fee: Money,
+    /// Itemized breakdown of [`FillReport::fee`], when the caller has it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fee_breakdown: Option<FeeBreakdown>,
 }
 
 impl FillReport {
     /// Create a new fill report.
+    ///
+    /// `fee` defaults to zero — use [`FillReport::with_fee`] or
+    /// [`FillReport::with_fee_breakdown`] once cost data is available.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         fill_id: impl Into<String>,
@@ -331,6 +346,8 @@ impl FillReport {
             timestamp,
             correlation_id: Some(client_order_id),
             client_id: None,
+            fee: Money::zero_inr(),
+            fee_breakdown: None,
         }
     }
 
@@ -342,6 +359,55 @@ impl FillReport {
     /// Returns client ID or "default".
     pub fn client_id_str(&self) -> &str {
         self.client_id.as_deref().unwrap_or("default")
+    }
+
+    /// Attaches a total fee with no itemized breakdown.
+    pub fn with_fee(mut self, fee: Money) -> Self {
+        self.fee = fee;
+        self
+    }
+
+    /// Attaches an itemized fee breakdown, setting [`FillReport::fee`] to its total.
+    pub fn with_fee_breakdown(mut self, breakdown: FeeBreakdown) -> Self {
+        self.fee = breakdown.total();
+        self.fee_breakdown = Some(breakdown);
+        self
+    }
+}
+
+/// Itemized Indian equity/F&O transaction cost breakdown for a single fill.
+///
+/// Each component is computed by `honba-me-market::india::costs`'s statutory
+/// calculators; this type is just the shared wire shape they fill in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct FeeBreakdown {
+    /// Broker commission.
+    pub brokerage: Money,
+    /// Securities Transaction Tax.
+    pub stt: Money,
+    /// Exchange transaction charges.
+    pub exchange_charges: Money,
+    /// Goods and Services Tax (on brokerage + exchange charges).
+    pub gst: Money,
+    /// Stamp duty.
+    pub stamp_duty: Money,
+    /// SEBI turnover fees.
+    pub sebi_charges: Money,
+}
+
+impl FeeBreakdown {
+    /// Sums every component into the total fee. All components are expected
+    /// to share one currency (SEBI-regulated Indian venues settle in INR);
+    /// this just adds the exact `Decimal` amounts and keeps the first
+    /// component's currency tag.
+    pub fn total(&self) -> Money {
+        let amount = self.brokerage.amount
+            + self.stt.amount
+            + self.exchange_charges.amount
+            + self.gst.amount
+            + self.stamp_duty.amount
+            + self.sebi_charges.amount;
+        Money::new(amount, self.brokerage.currency)
     }
 }
 
@@ -384,7 +450,7 @@ pub enum OrderEvent {
     /// The order was acknowledged by the broker/exchange.
     Acked(OrderAck),
     /// The order (or part of it) was filled.
-    Filled(FillReport),
+    Filled(Box<FillReport>),
     /// The order was rejected after submission.
     Rejected {
         /// This platform's order id.

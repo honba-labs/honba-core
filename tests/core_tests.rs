@@ -455,3 +455,69 @@ fn test_port_trait_is_object_safe() {
     let reader: std::sync::Arc<dyn QuoteReader> = std::sync::Arc::new(FixedQuote(tick.clone()));
     assert_eq!(reader.latest_quote(&instrument()).unwrap(), tick);
 }
+
+#[test]
+fn test_fill_report_fee_defaults_to_zero() {
+    let fill = FillReport::new(
+        "F-1",
+        "O-1",
+        Uuid::new_v4(),
+        instrument(),
+        OrderSide::Buy,
+        Price::from_rupees("2450.75").unwrap(),
+        Quantity::from_u64(10),
+        "momentum-alpha-v1",
+        Utc::now(),
+    );
+    assert_eq!(fill.fee, Money::zero_inr());
+    assert!(fill.fee_breakdown.is_none());
+}
+
+#[test]
+fn test_fee_breakdown_total_and_with_fee_breakdown() {
+    let breakdown = FeeBreakdown {
+        brokerage: Money::inr(Decimal::from_str("20.00").unwrap()),
+        stt: Money::inr(Decimal::from_str("12.50").unwrap()),
+        exchange_charges: Money::inr(Decimal::from_str("1.50").unwrap()),
+        gst: Money::inr(Decimal::from_str("3.87").unwrap()),
+        stamp_duty: Money::inr(Decimal::from_str("1.00").unwrap()),
+        sebi_charges: Money::inr(Decimal::from_str("0.10").unwrap()),
+    };
+    assert_eq!(
+        breakdown.total(),
+        Money::inr(Decimal::from_str("38.97").unwrap())
+    );
+
+    let fill = FillReport::new(
+        "F-2",
+        "O-2",
+        Uuid::new_v4(),
+        instrument(),
+        OrderSide::Sell,
+        Price::from_rupees("1200.00").unwrap(),
+        Quantity::from_u64(5),
+        "momentum-alpha-v1",
+        Utc::now(),
+    )
+    .with_fee_breakdown(breakdown);
+
+    // `with_fee_breakdown` sets the total fee from the itemized breakdown,
+    // so the two never drift apart.
+    assert_eq!(fill.fee, breakdown.total());
+    assert_eq!(fill.fee_breakdown, Some(breakdown));
+
+    let flat = FillReport::new(
+        "F-3",
+        "O-3",
+        Uuid::new_v4(),
+        instrument(),
+        OrderSide::Buy,
+        Price::from_rupees("500.00").unwrap(),
+        Quantity::from_u64(1),
+        "momentum-alpha-v1",
+        Utc::now(),
+    )
+    .with_fee(Money::inr(Decimal::from_str("5.00").unwrap()));
+    assert_eq!(flat.fee, Money::inr(Decimal::from_str("5.00").unwrap()));
+    assert!(flat.fee_breakdown.is_none());
+}

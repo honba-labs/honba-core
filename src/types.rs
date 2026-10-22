@@ -9,7 +9,7 @@ use std::str::FromStr;
 use crate::error::CoreError;
 
 /// Supported exchanges in the Indian market.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum Exchange {
     /// National Stock Exchange of India
@@ -18,6 +18,17 @@ pub enum Exchange {
     Bse,
     /// Multi Commodity Exchange of India
     Mcx,
+}
+
+impl Exchange {
+    /// The exchange code as it appears on the wire (`"NSE"`, `"BSE"`, `"MCX"`).
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Nse => "NSE",
+            Self::Bse => "BSE",
+            Self::Mcx => "MCX",
+        }
+    }
 }
 
 impl fmt::Display for Exchange {
@@ -44,7 +55,10 @@ impl FromStr for Exchange {
 }
 
 /// Canonical instrument identifier across all feeds and brokers.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+///
+/// Ordered by `(exchange, symbol, token, isin)` so it can key a `BTreeMap`
+/// and sort a dataset deterministically.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema)]
 pub struct InstrumentId {
     /// Exchange venue
     pub exchange: Exchange,
@@ -312,6 +326,12 @@ impl Money {
             amount,
             currency: Currency::Inr,
         }
+    }
+
+    /// Zero amount in INR — the default for fields with no cost data yet
+    /// (e.g. [`crate::order::FillReport::fee`] before a cost calculation runs).
+    pub fn zero_inr() -> Self {
+        Self::inr(Decimal::ZERO)
     }
 
     /// Calculate notional value from price and quantity.
