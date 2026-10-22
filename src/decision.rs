@@ -8,8 +8,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::error::CoreError;
-use crate::types::{Price, Quantity};
 use crate::order::OrderSide;
+use crate::types::{Price, Quantity};
 
 /// Closed enum representing all permissible strategy decisions.
 ///
@@ -82,13 +82,36 @@ pub enum Decision {
     },
 }
 
-
 impl Decision {
+    /// The SEBI algo-id format this crate enforces: 4 to 32 characters of
+    /// letters, digits, `_` or `-`.
+    ///
+    /// Brokers and the workspace's own golden vectors use dashed ids
+    /// (`momentum-alpha-v1`), so the check bounds the id instead of forcing one
+    /// spelling on every caller.
+    pub const ALGO_ID_FORMAT: &'static str = "^[A-Za-z0-9_-]{4,32}$";
+
+    /// Validates a SEBI algo id against [`Decision::ALGO_ID_FORMAT`].
+    fn validate_algo_id(algo_id: &str) -> Result<(), CoreError> {
+        let valid = (4..=32).contains(&algo_id.len())
+            && algo_id
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+        if valid {
+            Ok(())
+        } else {
+            Err(CoreError::Validation(format!(
+                "algo_id must match format {}, got {algo_id}",
+                Self::ALGO_ID_FORMAT
+            )))
+        }
+    }
+
     /// Validate that the decision adheres to structural sanity rules:
     /// - Quantities must be positive.
     /// - Price limits must be positive.
     /// - Symbols must not be empty.
-    /// - Algo IDs must not be empty.
+    /// - Algo IDs must not be empty and must match [`Decision::ALGO_ID_FORMAT`].
     pub fn validate(&self) -> Result<(), CoreError> {
         match self {
             Self::PlaceOrder {
@@ -105,6 +128,7 @@ impl Decision {
                 if algo_id.trim().is_empty() {
                     return Err(CoreError::Validation("algo_id cannot be empty".to_string()));
                 }
+                Self::validate_algo_id(algo_id)?;
                 if !qty.is_positive() {
                     return Err(CoreError::Validation(format!(
                         "Quantity must be strictly positive, got {}",
@@ -131,6 +155,7 @@ impl Decision {
                 if algo_id.trim().is_empty() {
                     return Err(CoreError::Validation("algo_id cannot be empty".to_string()));
                 }
+                Self::validate_algo_id(algo_id)?;
                 Ok(())
             }
             Self::CancelOrder {
@@ -138,8 +163,11 @@ impl Decision {
                 algo_id,
                 ..
             } => {
-                if algo_id.as_ref().map_or(true, |a| a.trim().is_empty()) {
+                if algo_id.as_ref().is_none_or(|a| a.trim().is_empty()) {
                     return Err(CoreError::Validation("algo_id cannot be empty".to_string()));
+                }
+                if let Some(id) = algo_id {
+                    Self::validate_algo_id(id)?;
                 }
                 Ok(())
             }
@@ -148,6 +176,7 @@ impl Decision {
                     if a.trim().is_empty() {
                         return Err(CoreError::Validation("algo_id cannot be empty".to_string()));
                     }
+                    Self::validate_algo_id(a)?;
                 }
                 Ok(())
             }

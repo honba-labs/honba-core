@@ -197,19 +197,97 @@ impl fmt::Display for Quantity {
     }
 }
 
+/// The display names of a currency's minor unit (`paisa` / `paise`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+pub struct MinorUnit {
+    /// Singular name of the minor unit (`paisa`, `cent`, `penny`).
+    pub singular: &'static str,
+    /// Plural name of the minor unit (`paise`, `cents`, `pence`).
+    pub plural: &'static str,
+}
+
 /// Currency enum.
+///
+/// The minor-unit table lives here, in the kernel, so every consumer (Rust
+/// crates, the Python SDK through `honba._honba.currency_minor_units`) reads one
+/// table instead of keeping its own copy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, Default)]
 pub enum Currency {
     /// Indian Rupee
     #[default]
     Inr,
+    /// United States Dollar
+    Usd,
+    /// Euro
+    Eur,
+    /// British Pound
+    Gbp,
+}
+
+impl Currency {
+    /// Every supported currency, in a stable order.
+    pub const ALL: &'static [Currency] =
+        &[Currency::Inr, Currency::Usd, Currency::Eur, Currency::Gbp];
+
+    /// The ISO 4217 code (`INR`, `USD`, `EUR`, `GBP`).
+    pub const fn code(self) -> &'static str {
+        match self {
+            Self::Inr => "INR",
+            Self::Usd => "USD",
+            Self::Eur => "EUR",
+            Self::Gbp => "GBP",
+        }
+    }
+
+    /// The number of decimal places in the major unit: one major unit is
+    /// `10**minor_exponent` minor units.
+    pub const fn minor_exponent(self) -> u8 {
+        match self {
+            Self::Inr | Self::Usd | Self::Eur | Self::Gbp => 2,
+        }
+    }
+
+    /// The display names of this currency's minor unit.
+    pub const fn minor_unit(self) -> MinorUnit {
+        match self {
+            Self::Inr => MinorUnit {
+                singular: "paisa",
+                plural: "paise",
+            },
+            Self::Usd | Self::Eur => MinorUnit {
+                singular: "cent",
+                plural: "cents",
+            },
+            Self::Gbp => MinorUnit {
+                singular: "penny",
+                plural: "pence",
+            },
+        }
+    }
+
+    /// Parses an ISO 4217 code, case-insensitively.
+    pub fn from_code(code: &str) -> Result<Self, CoreError> {
+        match code.to_uppercase().as_str() {
+            "INR" => Ok(Self::Inr),
+            "USD" => Ok(Self::Usd),
+            "EUR" => Ok(Self::Eur),
+            "GBP" => Ok(Self::Gbp),
+            other => Err(CoreError::InvalidCurrency(other.to_string())),
+        }
+    }
 }
 
 impl fmt::Display for Currency {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Inr => write!(f, "INR"),
-        }
+        write!(f, "{}", self.code())
+    }
+}
+
+impl FromStr for Currency {
+    type Err = CoreError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_code(s)
     }
 }
 
@@ -223,6 +301,11 @@ pub struct Money {
 }
 
 impl Money {
+    /// Create an amount in a given currency.
+    pub const fn new(amount: Decimal, currency: Currency) -> Self {
+        Self { amount, currency }
+    }
+
     /// Create amount in INR.
     pub fn inr(amount: Decimal) -> Self {
         Self {

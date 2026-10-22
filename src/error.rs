@@ -17,6 +17,10 @@ pub enum CoreError {
     #[error("price cannot be negative: '{0}'")]
     NegativePrice(String),
 
+    /// Unknown currency code
+    #[error("unknown currency: '{0}' (expected INR, USD, EUR, or GBP)")]
+    InvalidCurrency(String),
+
     /// Validation error for decisions or requests
     #[error("validation failure: {0}")]
     Validation(String),

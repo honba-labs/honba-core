@@ -1,10 +1,10 @@
 //! Canonical order models, state machine statuses, and execution reports.
 
+use crate::types::{InstrumentId, Price, Quantity};
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::types::{InstrumentId, Price, Quantity};
 
 /// Order side.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
@@ -342,5 +342,71 @@ impl FillReport {
     /// Returns client ID or "default".
     pub fn client_id_str(&self) -> &str {
         self.client_id.as_deref().unwrap_or("default")
+    }
+}
+
+/// Reason an order or modification was refused after submission (by the
+/// exchange/broker, or by expiring unfilled).
+///
+/// Distinct from a pre-trade risk-gate refusal, which never produces an
+/// [`OrderEvent`] at all — see [`crate::events::ExecutionEvent::RiskRefused`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "reason", content = "detail", rename_all = "snake_case")]
+pub enum RejectReason {
+    /// Rejected by the exchange or broker, with their message.
+    ExchangeRejected(String),
+    /// Expired unfilled per its time-in-force.
+    Expired,
+    /// Refused for insufficient margin.
+    InsufficientMargin,
+}
+
+/// Tag-only mirror of [`OrderEvent`]'s variants, for filtering/logging
+/// without carrying the full payload.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum OrderEventKind {
+    /// See [`OrderEvent::Acked`].
+    Acked,
+    /// See [`OrderEvent::Filled`].
+    Filled,
+    /// See [`OrderEvent::Rejected`].
+    Rejected,
+    /// See [`OrderEvent::Cancelled`].
+    Cancelled,
+}
+
+/// A single lifecycle event for an order, wrapping the existing
+/// acknowledgement/fill/rejection/cancellation payloads into one stream type.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum OrderEvent {
+    /// The order was acknowledged by the broker/exchange.
+    Acked(OrderAck),
+    /// The order (or part of it) was filled.
+    Filled(FillReport),
+    /// The order was rejected after submission.
+    Rejected {
+        /// This platform's order id.
+        order_id: String,
+        /// Why it was rejected.
+        reason: RejectReason,
+    },
+    /// The order was cancelled.
+    Cancelled {
+        /// This platform's order id.
+        order_id: String,
+    },
+}
+
+impl OrderEvent {
+    /// Returns this event's tag-only [`OrderEventKind`].
+    pub fn kind(&self) -> OrderEventKind {
+        match self {
+            Self::Acked(_) => OrderEventKind::Acked,
+            Self::Filled(_) => OrderEventKind::Filled,
+            Self::Rejected { .. } => OrderEventKind::Rejected,
+            Self::Cancelled { .. } => OrderEventKind::Cancelled,
+        }
     }
 }
