@@ -78,6 +78,43 @@
 - [x] **4.2 Golden Vector Alignment**
   - [x] Ensure golden conformance vectors in `schema/golden/` deserialize without discrepancies.
 
+### Phase 5: Kokoro Legacy Symbol Absorption & Hexagonal Ports (M4)
+`honba-kokoro` used to carry five placeholder crates (`honba-kokoro-{entities,messages,ports,types,risk}`) that several subsystems depended on for shared value objects, wire types, and port traits — an architectural misplacement, since Kokoro is the Heart (OMS/portfolio/ledger) bounded context, not the Shared Kernel. Those crates exported nothing and have now been deleted. Phase 5 gives their real symbols a home here instead.
+
+- [x] **5.1 Multi-Currency & Validation**
+  - [x] `Currency` extended to `Inr | Usd | Eur | Gbp`, with a `MinorUnit` table (`code`, `minor_exponent`, `minor_unit`, `from_code`/`FromStr`).
+  - [x] `Money::new(amount, currency)` constructor.
+  - [x] `Decision::ALGO_ID_FORMAT`: SEBI algo-id format enforced (4–32 chars, `[A-Za-z0-9_-]`) across `PlaceOrder`/`ModifyOrder`/`CancelOrder`/`CancelAll`.
+- [x] **5.2 Instrument Master Data** (`src/instrument.rs`)
+  - [x] `Instrument`, `InstrumentKind` (`Equity`/`Future`/`Option`/`Index`), `OptionType` (`Call`/`Put`).
+  - [x] `PositionSide` (`Long`/`Short`) — distinct from `OrderSide`; the direction of a held/closed position, needed by the portfolio engine, screener, and analytics alike.
+  - [x] Typed identifiers: `DatasetId`, `TradeId`, `VenueOrderId`.
+- [x] **5.3 Order Lifecycle Events** (`src/order.rs`)
+  - [x] `RejectReason`, `OrderEventKind`, `OrderEvent` — wraps the existing `OrderAck`/`FillReport` rather than re-deriving them.
+- [x] **5.4 Portfolio Wire Contracts** (`src/portfolio.rs`)
+  - [x] `PortfolioSnapshot` and its components: `PortfolioAccount`, `PortfolioMode`, `PortfolioSource`, `PortfolioPosition`, `PortfolioHolding`, `PortfolioGreeks`, `PortfolioTotals` — the Heart→House API→Face UI boundary contract.
+- [x] **5.5 Signals & Screener** (`src/signal.rs`, `src/screener.rs`)
+  - [x] `Signal`, `SignalDirection`, `SignalHorizon`, `Timeframe`, `SignalScanRequest`/`Response`.
+  - [x] `ScreenerScanRequest`/`Response`, `ScreenerRow`, `ScreenerFilterGroup`/`Predicate`, `FilterOp`, `SortSpec`, `MetricDefinition`/`KeySpec`/`Ref`, `MetricPeriod` (alias of `Timeframe`).
+- [x] **5.6 Cross-Subsystem Domain Events** (`src/events.rs`)
+  - [x] `Reason`, `ReasonGroup`, `ReasonPolarity`, `ExecutionEvent`, `TradingState`.
+- [x] **5.7 Hexagonal Port Traits** (`src/ports.rs`)
+  - [x] `PortError`/`PortResult`, `ConnectorState`, `BarRequest`, `TickRequest`, `SubscriptionParams`, `DatedInstrument`, `MarketEvent`.
+  - [x] Traits: `BarReader`, `TickReader`, `QuoteReader`, `DepthReader`, `MarketDataConnector`, `InstrumentMaster`, `ExecutionGateway` — synchronous signatures only (no `async`/Tokio dependency), object-safe for `Arc<dyn Trait>` injection per the Dependency Inversion principle.
+  - [x] `SCHEMA_VERSION` bumped (wire contract surface changed).
+
+**Deliberately not duplicated**: `Trade` (→ use `FillReport`), `Position` (→ use `PortfolioPosition`), and the legacy `BarType`/`BarSpecification`/`BarAggregation`/`QuoteTick`/`TradeTick`/`AggressorSide`/`PriceType`/`Product` names (→ superseded by the existing `Tick`/`Bar` design in `src/market.rs`, which predates this phase).
+
+### Phase 6: Pending — Not Yet Done
+The five legacy `honba-kokoro-*` crates are now deleted from disk entirely (they were untracked, zero-content placeholders). That makes the following concrete, not hypothetical:
+
+- [ ] **6.1 REST/transport-envelope types** — `ApiResponse`, `ApiVersion`, `Endpoint`/`ENDPOINTS`, `ErrorCode`/`ErrorCategory`/`ErrorDetail`, `HttpMethod`, `ParamLocation`, `ResponseEnvelope`, `WRITE_PATHS`, `write_endpoints` used to live in the deleted `honba-kokoro-messages`. These belong in `honba-ya-api` (already describes itself as the transport-agnostic API surface), **not** `honba-core` — deliberately not added here. Nobody has created them there yet; any consumer still importing them currently has no real type to point at.
+- [ ] **6.2 Re-point real consumers** — every subsystem that imported from the deleted crates needs its `Cargo.toml` and source repointed to the new `honba-core` homes (or, for 6.1's symbols, to `honba-ya-api` once that lands). Status per subsystem:
+  - `honba-kao` — in progress (re-pointing `Cargo.toml` + source to `honba-core`; `QuoteTick`→`Tick::Quote`, `Trade`→`FillReport` call sites need manual adaptation since the shapes differ; 6.1's symbols can't be resolved yet).
+  - `honba-me`, `honba-ya`, `honba-tamashii`, `honba-nou` — not started.
+- [ ] **6.3 Shape mismatches found while re-pointing `honba-kao`** (carry forward once confirmed): the legacy `Trade` type had method-style fee/cost accessors (`.costs()`) that `FillReport` has no equivalent for (no fee field at all) — any consumer that needs fee data off a fill will need that sourced from elsewhere, not invented on `FillReport`. The legacy `Order`/`OrderId` types don't map 1:1 onto `OrderRequest`/`OrderAck`/`FillReport`/plain `String` ids either; each call site needs individual judgment.
+- [ ] **6.4 `honba-ya-engine`** — unrelated to this migration, but currently blocks `honba-kao`'s build regardless: the crate no longer exists on disk (someone is independently retiring it, per the original risk-migration plan's own "retire `honba-ya-engine`" step). `honba-kao` depends on it and needs re-pointing to its replacement (likely `honba-ya-actors`) before it can compile end to end.
+
 ---
 
 ## 3. Verification & CI Test Suite
