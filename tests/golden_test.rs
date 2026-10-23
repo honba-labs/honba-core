@@ -1,5 +1,4 @@
 use honba_core::*;
-use serde_json;
 use std::fs;
 
 #[test]
@@ -51,7 +50,7 @@ fn test_golden_vector_decision_placeorder() {
             assert_eq!(symbol, "RELIANCE");
             assert_eq!(side, OrderSide::Buy);
             assert!(qty.is_positive());
-            assert!(algo_id != "");
+            assert!(!algo_id.is_empty());
             assert!(price_limit.is_some_and(|p| p.is_positive()));
         }
         _ => panic!("Expected PlaceOrder variant"),
