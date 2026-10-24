@@ -19,3 +19,17 @@ schemars = { version = "0.8", features = ["derive", "chrono", "uuid1", "rust_dec
 serde_json = "1"
 proptest = "1"
 rand = "0.8"
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+
+[profile.prod]
+inherits = "release"
+lto = true
+codegen-units = 1
+panic = "abort"
