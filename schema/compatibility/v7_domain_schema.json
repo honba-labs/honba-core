@@ -1,0 +1,446 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "honba-core Domain Schema",
+  "type": "object",
+  "properties": {
+    "Price": {
+      "type": "object",
+      "title": "Price",
+      "description": "Exact decimal price with strict positive invariants",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "Decimal price as string"
+        }
+      },
+      "required": ["value"]
+    },
+    "Quantity": {
+      "type": "object",
+      "title": "Quantity",
+      "description": "Share or contract count with non-negative invariants",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "Decimal quantity as string"
+        }
+      },
+      "required": ["value"]
+    },
+    "Money": {
+      "type": "object",
+      "title": "Money",
+      "description": "Currency-aware financial amount",
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "string",
+          "description": "Decimal amount as string"
+        },
+        "currency": {
+          "type": "string",
+          "description": "Currency enum (INR)"
+        }
+      },
+      "required": ["amount", "currency"]
+    },
+    "Currency": {
+      "type": "object",
+      "title": "Currency",
+      "description": "Minor-unit exponent definition",
+      "type": "object",
+      "enum": ["INR"]
+    },
+    "Exchange": {
+      "type": "object",
+      "title": "Exchange",
+      "description": "Supported exchanges in the Indian market",
+      "type": "object",
+      "enum": ["NSE", "BSE", "MCX"]
+    },
+    "InstrumentId": {
+      "type": "object",
+      "title": "InstrumentId",
+      "description": "Canonical instrument identifier",
+      "type": "object",
+      "properties": {
+        "exchange": {
+          "type": "string",
+          "enum": ["NSE", "BSE", "MCX"]
+        },
+        "symbol": {
+          "type": "string"
+        },
+        "token": {
+          "type": ["string", "null"]
+        },
+        "isin": {
+          "type": ["string", "null"]
+        }
+      },
+      "required": ["exchange", "symbol"]
+    },
+    "PriceBand": {
+      "type": "object",
+      "title": "PriceBand",
+      "description": "Daily scrip-wise or index circuit limit",
+      "type": "object",
+      "properties": {
+        "lower": {
+          "$ref": "#/components/parameters/Price"
+        },
+        "upper": {
+          "$ref": "#/components/parameters/Price"
+        },
+        "reference_price": {
+          "$ref": "#/components/parameters/Price"
+        },
+        "band_pct": {
+          "type": ["number", "null"]
+        }
+      },
+      "required": ["lower", "upper", "reference_price"]
+    },
+    "OrderSide": {
+      "type": "object",
+      "title": "OrderSide",
+      "description": "Order direction",
+      "type": "object",
+      "enum": ["BUY", "SELL"]
+    },
+    "OrderType": {
+      "type": "object",
+      "title": "OrderType",
+      "description": "Order type specification",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": ["type"]
+    },
+    "TimeInForce": {
+      "type": "object",
+      "title": "TimeInForce",
+      "description": "Order validity period",
+      "type": "object",
+      "enum": ["DAY", "IOC", "GTC"]
+    },
+    "OrderStatus": {
+      "type": "object",
+      "title": "OrderStatus",
+      "description": "Order lifecycle status",
+      "type": "object",
+      "enum": ["PendingNew", "New", "PartiallyFilled", "Filled", "Cancelled", "Rejected", "Expired"]
+    },
+    "OrderRequest": {
+      "type": "object",
+      "title": "OrderRequest",
+      "description": "Outbound order intent",
+      "type": "object",
+      "properties": {
+        "client_order_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "instrument": {
+          "$ref": "#/components/schemas/InstrumentId"
+        },
+        "side": {
+          "type": "string",
+          "enum": ["BUY", "SELL"]
+        },
+        "order_type": {
+          "$ref": "#/components/schemas/OrderType"
+        },
+        "quantity": {
+          "$ref": "#/components/schemas/Quantity"
+        },
+        "tif": {
+          "type": "string",
+          "enum": ["DAY", "IOC", "GTC"]
+        },
+        "algo_id": {
+          "type": "string"
+        },
+        "tag": {
+          "type": ["string", "null"]
+        },
+        "client_id": {
+          "type": ["string", "null"]
+        },
+        "correlation_id": {
+          "type": ["string", "null"],
+          "format": "uuid"
+        }
+      },
+      "required": ["client_order_id", "instrument", "side", "order_type", "quantity", "tif", "algo_id"]
+    },
+    "OrderAck": {
+      "type": "object",
+      "title": "OrderAck",
+      "description": "Broker confirmation",
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string"
+        },
+        "client_order_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "exchange_order_id": {
+          "type": ["string", "null"]
+        },
+        "status": {
+          "$ref": "#/components/schemas/OrderStatus"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "correlation_id": {
+          "type": ["string", "null"],
+          "format": "uuid"
+        },
+        "client_id": {
+          "type": ["string", "null"]
+        }
+      },
+      "required": ["order_id", "client_order_id", "status", "timestamp"]
+    },
+    "FillReport": {
+      "type": "object",
+      "title": "FillReport",
+      "description": "Execution fill report",
+      "type": "object",
+      "properties": {
+        "fill_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "client_order_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "instrument": {
+          "$ref": "#/components/schemas/InstrumentId"
+        },
+        "side": {
+          "type": "string",
+          "enum": ["BUY", "SELL"]
+        },
+        "price": {
+          "$ref": "#/components/schemas/Price"
+        },
+        "quantity": {
+          "$ref": "#/components/schemas/Quantity"
+        },
+        "algo_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "correlation_id": {
+          "type": ["string", "null"],
+          "format": "uuid"
+        },
+        "client_id": {
+          "type": ["string", "null"]
+        }
+      },
+      "required": ["fill_id", "order_id", "client_order_id", "instrument", "side", "price", "quantity", "algo_id", "timestamp"]
+    },
+    "CancelRequest": {
+      "type": "object",
+      "title": "CancelRequest",
+      "description": "Cancel request for existing order",
+      "type": "object",
+      "properties": {
+        "instrument": {
+          "$ref": "#/components/schemas/InstrumentId"
+        },
+        "client_order_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "algo_id": {
+          "type": ["string", "null"]
+        },
+        "client_id": {
+          "type": ["string", "null"]
+        }
+      },
+      "required": ["instrument", "client_order_id"]
+    },
+    "ModifyRequest": {
+      "type": "object",
+      "title": "ModifyRequest",
+      "description": "Modify request for existing order",
+      "type": "object",
+      "properties": {
+        "instrument": {
+          "$ref": "#/components/schemas/InstrumentId"
+        },
+        "new_qty": {
+          "type": ["string", "null"]
+        },
+        "new_price": {
+          "$ref": "#/components/schemas/Price"
+        },
+        "algo_id": {
+          "type": "string"
+        },
+        "client_id": {
+          "type": ["string", "null"]
+        }
+      },
+      "required": ["instrument", "algo_id"]
+    },
+    "Decision": {
+      "type": "object",
+      "title": "Decision",
+      "description": "Closed enum representing all permissible strategy decisions",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "symbol": {
+          "type": "string"
+        },
+        "side": {
+          "type": "string",
+          "enum": ["BUY", "SELL"]
+        },
+        "qty": {
+          "$ref": "#/components/schemas/Quantity"
+        },
+        "price_limit": {
+          "$ref": "#/components/schemas/Price"
+        },
+        "algo_id": {
+          "type": "string"
+        },
+        "rationale": {
+          "type": ["string", "null"]
+        },
+        "instrument": {
+          "$ref": "#/components/schemas/InstrumentId"
+        },
+        "new_qty": {
+          "type": ["string", "null"]
+        },
+        "new_price": {
+          "$ref": "#/components/schemas/Price"
+        }
+      },
+      "required": ["action", "symbol", "algo_id"]
+    },
+    "Tick": {
+      "type": "object",
+      "title": "Tick",
+      "description": "Canonical typed Tick enum for broker feeds",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "instrument": {
+          "$ref": "#/components/schemas/InstrumentId"
+        },
+        "price": {
+          "$ref": "#/components/schemas/Price"
+        },
+        "volume": {
+          "$ref": "#/components/schemas/Quantity"
+        },
+        "bid": {
+          "$ref": "#/components/schemas/Price"
+        },
+        "ask": {
+          "$ref": "#/components/schemas/Price"
+        },
+        "bid_qty": {
+          "$ref": "#/components/schemas/Quantity"
+        },
+        "ask_qty": {
+          "$ref": "#/components/schemas/Quantity"
+        },
+        "last_price": {
+          "type": ["object", "null"],
+          "$ref": "#/components/schemas/Price"
+        },
+        "bids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/DepthLevel"
+          }
+        },
+        "asks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/DepthLevel"
+          }
+        }
+      },
+      "required": ["type"]
+    },
+    "DepthLevel": {
+      "type": "object",
+      "title": "DepthLevel",
+      "description": "Level 2 market depth entry",
+      "type": "object",
+      "properties": {
+        "price": {
+          "$ref": "#/components/schemas/Price"
+        },
+        "quantity": {
+          "$ref": "#/components/schemas/Quantity"
+        },
+        "orders_count": {
+          "type": ["integer", "null"]
+        }
+      }
+    },
+    "Bar": {
+      "type": "object",
+      "title": "Bar",
+      "description": "Standard OHLCV bar / candle",
+      "type": "object",
+      "properties": {
+        "instrument": {
+          "$ref": "#/components/schemas/InstrumentId"
+        },
+        "open": {
+          "$ref": "#/components/schemas/Price"
+        },
+        "high": {
+          "$ref": "#/components/schemas/Price"
+        },
+        "low": {
+          "$ref": "#/components/schemas/Price"
+        },
+        "close": {
+          "$ref": "#/components/schemas/Price"
+        },
+        "volume": {
+          "$ref": "#/components/schemas/Quantity"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["instrument", "open", "high", "low", "close", "volume", "timestamp"]
+    }
+  },
+  "required": ["Price", "Quantity", "Money", "Currency", "Exchange", "InstrumentId", "PriceBand", "OrderSide", "OrderType", "TimeInForce", "OrderStatus", "OrderRequest", "OrderAck", "FillReport", "CancelRequest", "ModifyRequest", "Decision", "Tick", "DepthLevel", "Bar"]
+}

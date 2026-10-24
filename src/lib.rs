@@ -9,6 +9,9 @@
 //! - Canonical [`OrderRequest`], [`OrderAck`], [`FillReport`]
 //! - Safe, closed, strictly-validated AI [`Decision`]
 //! - Scrip-wise [`PriceBand`] limits for Indian market microstructure
+//! - Canonical dynamic position sizing grammar ([`SizingMethod`], [`RiskBudget`], [`PositionSizingRequest`], [`PositionSizingResult`])
+//! - Tactical DDD first-class aggregate events ([`DomainEvent`])
+//! - Zero-dependency W3C distributed trace context carrier ([`TraceContext`])
 
 pub mod decision;
 pub mod error;
@@ -20,11 +23,13 @@ pub mod portfolio;
 pub mod ports;
 pub mod screener;
 pub mod signal;
+pub mod sizing;
 pub mod types;
+pub mod wire;
 
 pub use decision::Decision;
 pub use error::CoreError;
-pub use events::{ExecutionEvent, Reason, ReasonGroup, ReasonPolarity, TradingState};
+pub use events::{DomainEvent, ExecutionEvent, Reason, ReasonGroup, ReasonPolarity, TradingState};
 pub use instrument::{
     DatasetId, Instrument, InstrumentKind, OptionType, PositionSide, TradeId, VenueOrderId,
 };
@@ -38,9 +43,9 @@ pub use portfolio::{
     PortfolioSnapshot, PortfolioSource, PortfolioTotals,
 };
 pub use ports::{
-    BarReader, BarRequest, ConnectorState, DatedInstrument, DepthReader, ExecutionGateway,
-    InstrumentMaster, MarketDataConnector, MarketEvent, PortError, PortResult, QuoteReader,
-    SubscriptionParams, TickReader, TickRequest,
+    BarReader, BarRequest, CanonicalPositionSizer, ConnectorState, DatedInstrument, DepthReader,
+    ExecutionGateway, InstrumentMaster, MarketDataConnector, MarketEvent, PortError, PortResult,
+    PositionSizer, QuoteReader, SubscriptionParams, TickReader, TickRequest,
 };
 pub use screener::{
     FilterOp, MetricDefinition, MetricKeySpec, MetricPeriod, MetricRef, ScreenerFilterGroup,
@@ -49,7 +54,11 @@ pub use screener::{
 pub use signal::{
     Signal, SignalDirection, SignalHorizon, SignalScanRequest, SignalScanResponse, Timeframe,
 };
+pub use sizing::{
+    PositionSizingRequest, PositionSizingResult, RiskBudget, SizingMethod, calculate_position_size,
+};
 pub use types::{Currency, Exchange, InstrumentId, MinorUnit, Money, Price, PriceBand, Quantity};
+pub use wire::TraceContext;
 
 /// Version of the JSON wire contract, owned here because this crate owns the
 /// wire types.
@@ -65,7 +74,12 @@ pub use types::{Currency, Exchange, InstrumentId, MinorUnit, Money, Price, Price
 /// v7: added `FillReport::fee`/`fee_breakdown` (`FeeBreakdown`) — the
 /// contract for per-fill transaction costs; the statutory calculation
 /// itself lives in `honba-me-market::india::costs`.
-pub const SCHEMA_VERSION: u32 = 7;
+///
+/// v8: added dynamic position sizing contracts (`SizingMethod`, `RiskBudget`,
+/// `PositionSizingRequest`, `PositionSizingResult`, `PositionSizer`), enriched
+/// `Signal` with execution/stop levels, first-class tactical `DomainEvent`
+/// aggregate envelope, and W3C `TraceContext` distributed observability carrier.
+pub const SCHEMA_VERSION: u32 = 8;
 
 /// Semantic version of the REST endpoint surface.
 pub const API_VERSION: &str = "v1";

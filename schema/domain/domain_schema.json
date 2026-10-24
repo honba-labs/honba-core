@@ -7,33 +7,34 @@
       "type": "object",
       "title": "Price",
       "description": "Exact decimal price with strict positive invariants",
-      "type": "object",
       "properties": {
         "value": {
           "type": "string",
           "description": "Decimal price as string"
         }
       },
-      "required": ["value"]
+      "required": [
+        "value"
+      ]
     },
     "Quantity": {
       "type": "object",
       "title": "Quantity",
       "description": "Share or contract count with non-negative invariants",
-      "type": "object",
       "properties": {
         "value": {
           "type": "string",
           "description": "Decimal quantity as string"
         }
       },
-      "required": ["value"]
+      "required": [
+        "value"
+      ]
     },
     "Money": {
       "type": "object",
       "title": "Money",
       "description": "Currency-aware financial amount",
-      "type": "object",
       "properties": {
         "amount": {
           "type": "string",
@@ -44,49 +45,67 @@
           "description": "Currency enum (INR)"
         }
       },
-      "required": ["amount", "currency"]
+      "required": [
+        "amount",
+        "currency"
+      ]
     },
     "Currency": {
       "type": "object",
       "title": "Currency",
       "description": "Minor-unit exponent definition",
-      "type": "object",
-      "enum": ["INR"]
+      "enum": [
+        "INR"
+      ]
     },
     "Exchange": {
       "type": "object",
       "title": "Exchange",
       "description": "Supported exchanges in the Indian market",
-      "type": "object",
-      "enum": ["NSE", "BSE", "MCX"]
+      "enum": [
+        "NSE",
+        "BSE",
+        "MCX"
+      ]
     },
     "InstrumentId": {
       "type": "object",
       "title": "InstrumentId",
       "description": "Canonical instrument identifier",
-      "type": "object",
       "properties": {
         "exchange": {
           "type": "string",
-          "enum": ["NSE", "BSE", "MCX"]
+          "enum": [
+            "NSE",
+            "BSE",
+            "MCX"
+          ]
         },
         "symbol": {
           "type": "string"
         },
         "token": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "isin": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
-      "required": ["exchange", "symbol"]
+      "required": [
+        "exchange",
+        "symbol"
+      ]
     },
     "PriceBand": {
       "type": "object",
       "title": "PriceBand",
       "description": "Daily scrip-wise or index circuit limit",
-      "type": "object",
       "properties": {
         "lower": {
           "$ref": "#/components/parameters/Price"
@@ -98,49 +117,68 @@
           "$ref": "#/components/parameters/Price"
         },
         "band_pct": {
-          "type": ["number", "null"]
+          "type": [
+            "number",
+            "null"
+          ]
         }
       },
-      "required": ["lower", "upper", "reference_price"]
+      "required": [
+        "lower",
+        "upper",
+        "reference_price"
+      ]
     },
     "OrderSide": {
       "type": "object",
       "title": "OrderSide",
       "description": "Order direction",
-      "type": "object",
-      "enum": ["BUY", "SELL"]
+      "enum": [
+        "BUY",
+        "SELL"
+      ]
     },
     "OrderType": {
       "type": "object",
       "title": "OrderType",
       "description": "Order type specification",
-      "type": "object",
       "properties": {
         "type": {
           "type": "string"
         }
       },
-      "required": ["type"]
+      "required": [
+        "type"
+      ]
     },
     "TimeInForce": {
       "type": "object",
       "title": "TimeInForce",
       "description": "Order validity period",
-      "type": "object",
-      "enum": ["DAY", "IOC", "GTC"]
+      "enum": [
+        "DAY",
+        "IOC",
+        "GTC"
+      ]
     },
     "OrderStatus": {
       "type": "object",
       "title": "OrderStatus",
       "description": "Order lifecycle status",
-      "type": "object",
-      "enum": ["PendingNew", "New", "PartiallyFilled", "Filled", "Cancelled", "Rejected", "Expired"]
+      "enum": [
+        "PendingNew",
+        "New",
+        "PartiallyFilled",
+        "Filled",
+        "Cancelled",
+        "Rejected",
+        "Expired"
+      ]
     },
     "OrderRequest": {
       "type": "object",
       "title": "OrderRequest",
       "description": "Outbound order intent",
-      "type": "object",
       "properties": {
         "client_order_id": {
           "type": "string",
@@ -151,7 +189,10 @@
         },
         "side": {
           "type": "string",
-          "enum": ["BUY", "SELL"]
+          "enum": [
+            "BUY",
+            "SELL"
+          ]
         },
         "order_type": {
           "$ref": "#/components/schemas/OrderType"
@@ -161,29 +202,56 @@
         },
         "tif": {
           "type": "string",
-          "enum": ["DAY", "IOC", "GTC"]
+          "enum": [
+            "DAY",
+            "IOC",
+            "GTC"
+          ]
         },
         "algo_id": {
           "type": "string"
         },
         "tag": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "client_id": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "correlation_id": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "format": "uuid"
+        },
+        "trace_context": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "$ref": "#/components/schemas/TraceContext"
         }
       },
-      "required": ["client_order_id", "instrument", "side", "order_type", "quantity", "tif", "algo_id"]
+      "required": [
+        "client_order_id",
+        "instrument",
+        "side",
+        "order_type",
+        "quantity",
+        "tif",
+        "algo_id"
+      ]
     },
     "OrderAck": {
       "type": "object",
       "title": "OrderAck",
       "description": "Broker confirmation",
-      "type": "object",
       "properties": {
         "order_id": {
           "type": "string"
@@ -193,7 +261,10 @@
           "format": "uuid"
         },
         "exchange_order_id": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "status": {
           "$ref": "#/components/schemas/OrderStatus"
@@ -203,20 +274,37 @@
           "format": "date-time"
         },
         "correlation_id": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "format": "uuid"
         },
         "client_id": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "trace_context": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "$ref": "#/components/schemas/TraceContext"
         }
       },
-      "required": ["order_id", "client_order_id", "status", "timestamp"]
+      "required": [
+        "order_id",
+        "client_order_id",
+        "status",
+        "timestamp"
+      ]
     },
     "FillReport": {
       "type": "object",
       "title": "FillReport",
       "description": "Execution fill report",
-      "type": "object",
       "properties": {
         "fill_id": {
           "type": "string"
@@ -233,7 +321,10 @@
         },
         "side": {
           "type": "string",
-          "enum": ["BUY", "SELL"]
+          "enum": [
+            "BUY",
+            "SELL"
+          ]
         },
         "price": {
           "$ref": "#/components/schemas/Price"
@@ -249,20 +340,42 @@
           "format": "date-time"
         },
         "correlation_id": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "format": "uuid"
         },
         "client_id": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "trace_context": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "$ref": "#/components/schemas/TraceContext"
         }
       },
-      "required": ["fill_id", "order_id", "client_order_id", "instrument", "side", "price", "quantity", "algo_id", "timestamp"]
+      "required": [
+        "fill_id",
+        "order_id",
+        "client_order_id",
+        "instrument",
+        "side",
+        "price",
+        "quantity",
+        "algo_id",
+        "timestamp"
+      ]
     },
     "CancelRequest": {
       "type": "object",
       "title": "CancelRequest",
       "description": "Cancel request for existing order",
-      "type": "object",
       "properties": {
         "instrument": {
           "$ref": "#/components/schemas/InstrumentId"
@@ -272,25 +385,36 @@
           "format": "uuid"
         },
         "algo_id": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "client_id": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
-      "required": ["instrument", "client_order_id"]
+      "required": [
+        "instrument",
+        "client_order_id"
+      ]
     },
     "ModifyRequest": {
       "type": "object",
       "title": "ModifyRequest",
       "description": "Modify request for existing order",
-      "type": "object",
       "properties": {
         "instrument": {
           "$ref": "#/components/schemas/InstrumentId"
         },
         "new_qty": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "new_price": {
           "$ref": "#/components/schemas/Price"
@@ -299,16 +423,21 @@
           "type": "string"
         },
         "client_id": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
-      "required": ["instrument", "algo_id"]
+      "required": [
+        "instrument",
+        "algo_id"
+      ]
     },
     "Decision": {
       "type": "object",
       "title": "Decision",
       "description": "Closed enum representing all permissible strategy decisions",
-      "type": "object",
       "properties": {
         "action": {
           "type": "string"
@@ -318,7 +447,10 @@
         },
         "side": {
           "type": "string",
-          "enum": ["BUY", "SELL"]
+          "enum": [
+            "BUY",
+            "SELL"
+          ]
         },
         "qty": {
           "$ref": "#/components/schemas/Quantity"
@@ -330,25 +462,34 @@
           "type": "string"
         },
         "rationale": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "instrument": {
           "$ref": "#/components/schemas/InstrumentId"
         },
         "new_qty": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "new_price": {
           "$ref": "#/components/schemas/Price"
         }
       },
-      "required": ["action", "symbol", "algo_id"]
+      "required": [
+        "action",
+        "symbol",
+        "algo_id"
+      ]
     },
     "Tick": {
       "type": "object",
       "title": "Tick",
       "description": "Canonical typed Tick enum for broker feeds",
-      "type": "object",
       "properties": {
         "type": {
           "type": "string"
@@ -375,7 +516,10 @@
           "$ref": "#/components/schemas/Quantity"
         },
         "last_price": {
-          "type": ["object", "null"],
+          "type": [
+            "object",
+            "null"
+          ],
           "$ref": "#/components/schemas/Price"
         },
         "bids": {
@@ -391,13 +535,14 @@
           }
         }
       },
-      "required": ["type"]
+      "required": [
+        "type"
+      ]
     },
     "DepthLevel": {
       "type": "object",
       "title": "DepthLevel",
       "description": "Level 2 market depth entry",
-      "type": "object",
       "properties": {
         "price": {
           "$ref": "#/components/schemas/Price"
@@ -406,7 +551,10 @@
           "$ref": "#/components/schemas/Quantity"
         },
         "orders_count": {
-          "type": ["integer", "null"]
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       }
     },
@@ -414,7 +562,6 @@
       "type": "object",
       "title": "Bar",
       "description": "Standard OHLCV bar / candle",
-      "type": "object",
       "properties": {
         "instrument": {
           "$ref": "#/components/schemas/InstrumentId"
@@ -439,8 +586,441 @@
           "format": "date-time"
         }
       },
-      "required": ["instrument", "open", "high", "low", "close", "volume", "timestamp"]
+      "required": [
+        "instrument",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "timestamp"
+      ]
+    },
+    "TraceContext": {
+      "type": "object",
+      "title": "TraceContext",
+      "description": "Zero-dependency W3C distributed trace context carrier",
+      "properties": {
+        "trace_id": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "minItems": 16,
+          "maxItems": 16
+        },
+        "span_id": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "minItems": 8,
+          "maxItems": 8
+        },
+        "trace_flags": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        }
+      },
+      "required": [
+        "trace_id",
+        "span_id",
+        "trace_flags"
+      ]
+    },
+    "SizingMethod": {
+      "type": "object",
+      "title": "SizingMethod",
+      "description": "Permissible dynamic position sizing models",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "fixed_fractional"
+              ]
+            },
+            "risk_pct": {
+              "type": "string",
+              "description": "Decimal risk fraction as string"
+            }
+          },
+          "required": [
+            "type",
+            "risk_pct"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "volatility_target"
+              ]
+            },
+            "target_annual_vol": {
+              "type": "string",
+              "description": "Decimal target annual volatility as string"
+            },
+            "lookback_bars": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "type",
+            "target_annual_vol",
+            "lookback_bars"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "kelly_criterion"
+              ]
+            },
+            "fraction": {
+              "type": "string",
+              "description": "Decimal fraction as string"
+            },
+            "win_rate": {
+              "type": "string",
+              "description": "Decimal win rate as string"
+            },
+            "payoff_ratio": {
+              "type": "string",
+              "description": "Decimal payoff ratio as string"
+            }
+          },
+          "required": [
+            "type",
+            "fraction",
+            "win_rate",
+            "payoff_ratio"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "equal_risk_contribution"
+              ]
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "fixed_notional"
+              ]
+            },
+            "notional": {
+              "$ref": "#/components/schemas/Money"
+            }
+          },
+          "required": [
+            "type",
+            "notional"
+          ]
+        }
+      ]
+    },
+    "RiskBudget": {
+      "type": "object",
+      "title": "RiskBudget",
+      "description": "Risk parameters and sizing constraints for dynamic sizing",
+      "properties": {
+        "equity": {
+          "$ref": "#/components/schemas/Money"
+        },
+        "risk_pct": {
+          "type": "string",
+          "description": "Decimal risk percentage as string"
+        },
+        "max_position_notional": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "$ref": "#/components/schemas/Money"
+        },
+        "max_position_qty": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "$ref": "#/components/schemas/Quantity"
+        },
+        "max_portfolio_risk_pct": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "min_lot_size": {
+          "$ref": "#/components/schemas/Quantity"
+        },
+        "freeze_limit_qty": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "$ref": "#/components/schemas/Quantity"
+        }
+      },
+      "required": [
+        "equity",
+        "risk_pct",
+        "min_lot_size"
+      ]
+    },
+    "PositionSizingRequest": {
+      "type": "object",
+      "title": "PositionSizingRequest",
+      "description": "Request to compute dynamic position sizing for an instrument trade intent",
+      "properties": {
+        "instrument": {
+          "$ref": "#/components/schemas/InstrumentId"
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "LONG",
+            "SHORT"
+          ]
+        },
+        "entry_price": {
+          "$ref": "#/components/schemas/Price"
+        },
+        "stop_loss": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "$ref": "#/components/schemas/Price"
+        },
+        "current_volatility": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "account_equity": {
+          "$ref": "#/components/schemas/Money"
+        },
+        "risk_budget": {
+          "$ref": "#/components/schemas/RiskBudget"
+        },
+        "sizing_method": {
+          "$ref": "#/components/schemas/SizingMethod"
+        }
+      },
+      "required": [
+        "instrument",
+        "side",
+        "entry_price",
+        "account_equity",
+        "risk_budget",
+        "sizing_method"
+      ]
+    },
+    "PositionSizingResult": {
+      "type": "object",
+      "title": "PositionSizingResult",
+      "description": "Output of dynamic position sizing",
+      "properties": {
+        "instrument": {
+          "$ref": "#/components/schemas/InstrumentId"
+        },
+        "quantity": {
+          "$ref": "#/components/schemas/Quantity"
+        },
+        "allocated_notional": {
+          "$ref": "#/components/schemas/Money"
+        },
+        "risk_at_stake": {
+          "$ref": "#/components/schemas/Money"
+        },
+        "target_weight": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "capped_by_limit": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "instrument",
+        "quantity",
+        "allocated_notional",
+        "risk_at_stake",
+        "capped_by_limit"
+      ]
+    },
+    "DomainEvent": {
+      "type": "object",
+      "title": "DomainEvent",
+      "description": "Tactical DDD aggregate domain events representing authoritative platform state transitions",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "trace_context": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "$ref": "#/components/schemas/TraceContext"
+        }
+      },
+      "required": [
+        "type",
+        "timestamp"
+      ]
+    },
+    "Signal": {
+      "type": "object",
+      "title": "Signal",
+      "description": "Enriched trade strategy/indicator signal",
+      "properties": {
+        "instrument": {
+          "$ref": "#/components/schemas/InstrumentId"
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "bullish",
+            "bearish",
+            "neutral"
+          ]
+        },
+        "horizon": {
+          "type": "string",
+          "enum": [
+            "intraday",
+            "swing",
+            "positional"
+          ]
+        },
+        "timeframe": {
+          "type": "string",
+          "enum": [
+            "m1",
+            "m5",
+            "m15",
+            "m30",
+            "h1",
+            "d1",
+            "w1"
+          ]
+        },
+        "strength": {
+          "type": "string"
+        },
+        "generated_by": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "entry_price": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "$ref": "#/components/schemas/Price"
+        },
+        "stop_loss": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "$ref": "#/components/schemas/Price"
+        },
+        "take_profit": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "$ref": "#/components/schemas/Price"
+        },
+        "volatility_atr": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "instrument",
+        "direction",
+        "horizon",
+        "timeframe",
+        "strength",
+        "generated_by",
+        "timestamp"
+      ]
     }
   },
-  "required": ["Price", "Quantity", "Money", "Currency", "Exchange", "InstrumentId", "PriceBand", "OrderSide", "OrderType", "TimeInForce", "OrderStatus", "OrderRequest", "OrderAck", "FillReport", "CancelRequest", "ModifyRequest", "Decision", "Tick", "DepthLevel", "Bar"]
+  "required": [
+    "Price",
+    "Quantity",
+    "Money",
+    "Currency",
+    "Exchange",
+    "InstrumentId",
+    "PriceBand",
+    "OrderSide",
+    "OrderType",
+    "TimeInForce",
+    "OrderStatus",
+    "OrderRequest",
+    "OrderAck",
+    "FillReport",
+    "CancelRequest",
+    "ModifyRequest",
+    "Decision",
+    "Tick",
+    "DepthLevel",
+    "Bar",
+    "SizingMethod",
+    "RiskBudget",
+    "PositionSizingRequest",
+    "PositionSizingResult",
+    "DomainEvent",
+    "TraceContext",
+    "Signal"
+  ]
 }

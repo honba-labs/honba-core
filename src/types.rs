@@ -9,7 +9,9 @@ use std::str::FromStr;
 use crate::error::CoreError;
 
 /// Supported exchanges in the Indian market.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum Exchange {
     /// National Stock Exchange of India
@@ -58,7 +60,9 @@ impl FromStr for Exchange {
 ///
 /// Ordered by `(exchange, symbol, token, isin)` so it can key a `BTreeMap`
 /// and sort a dataset deterministically.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 pub struct InstrumentId {
     /// Exchange venue
     pub exchange: Exchange,
@@ -150,6 +154,11 @@ impl Price {
         }
         (self.0 % tick_size) == Decimal::ZERO
     }
+
+    /// Access the underlying exact decimal value.
+    pub const fn value(&self) -> Decimal {
+        self.0
+    }
 }
 
 impl fmt::Display for Price {
@@ -193,6 +202,11 @@ impl Quantity {
     /// Returns true if quantity is strictly greater than zero.
     pub fn is_positive(&self) -> bool {
         self.0 > Decimal::ZERO
+    }
+
+    /// Access the underlying exact decimal value.
+    pub const fn value(&self) -> Decimal {
+        self.0
     }
 
     /// Check if quantity is a multiple of a lot size.

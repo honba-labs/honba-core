@@ -1,10 +1,10 @@
 //! Hexagonal port traits (interfaces only, no implementations).
 //!
 //! `honba-core` stays zero-I/O (`AGENTS.md` §2.5): these traits are abstract
-//! contracts, not implementations. Real market-data connectors and
-//! execution gateways live in `honba-me`/`honba-te` and implement these
-//! traits, injected as `Arc<dyn Trait>` per `AGENTS.md` §2.1. Every trait
-//! here is object-safe for exactly that reason.
+//! contracts, not implementations. Real market-data connectors, execution
+//! gateways, and position sizers live in downstream crates or default pure kernels,
+//! injected as `Arc<dyn Trait>` per `AGENTS.md` §2.1. Every trait here is
+//! object-safe for exactly that reason.
 
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
@@ -15,6 +15,7 @@ use crate::instrument::Instrument;
 use crate::market::{Bar, DepthLevel, Tick};
 use crate::order::{ModifyRequest, OrderAck, OrderRequest};
 use crate::signal::Timeframe;
+use crate::sizing::{PositionSizingRequest, PositionSizingResult};
 use crate::types::InstrumentId;
 
 /// Errors a port implementation can return.
@@ -32,6 +33,9 @@ pub enum PortError {
     /// The operation is not supported by this implementation.
     #[error("unsupported: {0}")]
     Unsupported(String),
+    /// Calculation or validation failure in port adapter.
+    #[error("sizing failure: {0}")]
+    CalculationFailed(String),
 }
 
 /// Result type for port operations.
@@ -160,4 +164,30 @@ pub trait ExecutionGateway {
     fn cancel(&mut self, order_id: &str) -> PortResult<()>;
     /// Modify an existing order.
     fn modify(&mut self, req: &ModifyRequest) -> PortResult<OrderAck>;
+}
+
+/// Hexagonal port for dynamic position sizing.
+///
+/// Decouples signal generation from sizing algorithms. Object-safe for
+/// `Arc<dyn PositionSizer>` dependency injection with zero I/O and zero floats.
+pub trait PositionSizer: Send + Sync {
+    /// Calculate position sizing from request parameters.
+    fn calculate_size(
+        &self,
+        request: &PositionSizingRequest,
+    ) -> Result<PositionSizingResult, PortError>;
+}
+
+/// Canonical zero-I/O position sizer using pure 128-bit decimal arithmetic.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct CanonicalPositionSizer;
+
+impl PositionSizer for CanonicalPositionSizer {
+    fn calculate_size(
+        &self,
+        request: &PositionSizingRequest,
+    ) -> Result<PositionSizingResult, PortError> {
+        crate::sizing::calculate_position_size(request)
+            .map_err(|e| PortError::CalculationFailed(e.to_string()))
+    }
 }

@@ -1,6 +1,7 @@
 //! Canonical order models, state machine statuses, and execution reports.
 
 use crate::types::{InstrumentId, Money, Price, Quantity};
+use crate::wire::TraceContext;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -175,6 +176,9 @@ pub struct OrderRequest {
     /// Optional correlation ID for tracing across async actor hops
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub correlation_id: Option<Uuid>,
+    /// Optional W3C distributed trace context
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trace_context: Option<TraceContext>,
 }
 
 impl OrderRequest {
@@ -198,6 +202,7 @@ impl OrderRequest {
             tag: None,
             client_id: None,
             correlation_id: Some(client_order_id),
+            trace_context: None,
         }
     }
 
@@ -210,6 +215,12 @@ impl OrderRequest {
     /// Attach an explicit correlation ID.
     pub fn with_correlation_id(mut self, correlation_id: Uuid) -> Self {
         self.correlation_id = Some(correlation_id);
+        self
+    }
+
+    /// Attach an explicit W3C trace context.
+    pub fn with_trace_context(mut self, trace_context: TraceContext) -> Self {
+        self.trace_context = Some(trace_context);
         self
     }
 
@@ -244,6 +255,9 @@ pub struct OrderAck {
     /// Optional client ID
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client_id: Option<String>,
+    /// Optional W3C distributed trace context
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trace_context: Option<TraceContext>,
 }
 
 impl OrderAck {
@@ -262,7 +276,14 @@ impl OrderAck {
             timestamp,
             correlation_id: Some(client_order_id),
             client_id: None,
+            trace_context: None,
         }
+    }
+
+    /// Attach an explicit W3C trace context.
+    pub fn with_trace_context(mut self, trace_context: TraceContext) -> Self {
+        self.trace_context = Some(trace_context);
+        self
     }
 
     /// Returns correlation ID or falls back to client_order_id.
@@ -315,6 +336,9 @@ pub struct FillReport {
     /// Itemized breakdown of [`FillReport::fee`], when the caller has it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fee_breakdown: Option<FeeBreakdown>,
+    /// Optional W3C distributed trace context
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trace_context: Option<TraceContext>,
 }
 
 impl FillReport {
@@ -348,6 +372,7 @@ impl FillReport {
             client_id: None,
             fee: Money::zero_inr(),
             fee_breakdown: None,
+            trace_context: None,
         }
     }
 
@@ -371,6 +396,12 @@ impl FillReport {
     pub fn with_fee_breakdown(mut self, breakdown: FeeBreakdown) -> Self {
         self.fee = breakdown.total();
         self.fee_breakdown = Some(breakdown);
+        self
+    }
+
+    /// Attach an explicit W3C trace context.
+    pub fn with_trace_context(mut self, trace_context: TraceContext) -> Self {
+        self.trace_context = Some(trace_context);
         self
     }
 }

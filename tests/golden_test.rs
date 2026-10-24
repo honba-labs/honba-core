@@ -6,7 +6,12 @@ fn test_golden_vector_tick_ltp() {
     let json = fs::read_to_string("schema/golden/tick_ltp_golden.json").unwrap();
     let tick: Tick = serde_json::from_str(&json).unwrap();
     match tick {
-        Tick::Ltp { instrument, price, volume, .. } => {
+        Tick::Ltp {
+            instrument,
+            price,
+            volume,
+            ..
+        } => {
             assert_eq!(instrument.symbol, "RELIANCE");
             assert_eq!(instrument.exchange, Exchange::Nse);
             assert!(price.is_positive());
@@ -21,7 +26,14 @@ fn test_golden_vector_tick_quote() {
     let json = fs::read_to_string("schema/golden/tick_quote_golden.json").unwrap();
     let tick: Tick = serde_json::from_str(&json).unwrap();
     match tick {
-        Tick::Quote { instrument, bid, ask, bid_qty, ask_qty, .. } => {
+        Tick::Quote {
+            instrument,
+            bid,
+            ask,
+            bid_qty,
+            ask_qty,
+            ..
+        } => {
             assert_eq!(instrument.symbol, "TCS");
             assert!(bid.is_positive());
             assert!(ask.is_positive());
@@ -46,7 +58,14 @@ fn test_golden_vector_decision_placeorder() {
     let json = fs::read_to_string("schema/golden/decision_placeorder_golden.json").unwrap();
     let decision: Decision = serde_json::from_str(&json).unwrap();
     match decision {
-        Decision::PlaceOrder { symbol, side, qty, price_limit, algo_id, .. } => {
+        Decision::PlaceOrder {
+            symbol,
+            side,
+            qty,
+            price_limit,
+            algo_id,
+            ..
+        } => {
             assert_eq!(symbol, "RELIANCE");
             assert_eq!(side, OrderSide::Buy);
             assert!(qty.is_positive());

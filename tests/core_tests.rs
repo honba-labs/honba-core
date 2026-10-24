@@ -2,6 +2,7 @@ use chrono::Utc;
 use honba_core::*;
 use rust_decimal::Decimal;
 use std::str::FromStr;
+use std::sync::Arc;
 use uuid::Uuid;
 
 fn instrument() -> InstrumentId {
@@ -341,21 +342,52 @@ fn test_portfolio_snapshot_roundtrip() {
 
 #[test]
 fn test_signal_scan_roundtrip() {
-    let signal = Signal {
-        instrument: instrument(),
-        direction: SignalDirection::Bullish,
-        horizon: SignalHorizon::Swing,
-        timeframe: Timeframe::D1,
-        strength: Decimal::from_str("0.75").unwrap(),
-        generated_by: "momentum-alpha-v1".to_string(),
-        timestamp: Utc::now(),
-    };
+    let signal = Signal::new(
+        instrument(),
+        SignalDirection::Bullish,
+        SignalHorizon::Swing,
+        Timeframe::D1,
+        Decimal::from_str("0.75").unwrap(),
+        "momentum-alpha-v1",
+        Utc::now(),
+    );
     let response = SignalScanResponse {
         signals: vec![signal.clone()],
     };
     let json = serde_json::to_string(&response).unwrap();
     let decoded: SignalScanResponse = serde_json::from_str(&json).unwrap();
     assert_eq!(decoded.signals[0], signal);
+}
+
+#[test]
+fn test_signal_enrichment_and_builder() {
+    let ep = Price::from_rupees("2500.00").unwrap();
+    let sl = Price::from_rupees("2400.00").unwrap();
+    let tp = Price::from_rupees("2700.00").unwrap();
+    let atr = Decimal::from_str("35.50").unwrap();
+
+    let signal = Signal::new(
+        instrument(),
+        SignalDirection::Bullish,
+        SignalHorizon::Swing,
+        Timeframe::D1,
+        Decimal::from_str("0.85").unwrap(),
+        "breakout-v2",
+        Utc::now(),
+    )
+    .with_entry_price(ep)
+    .with_stop_loss(sl)
+    .with_take_profit(tp)
+    .with_volatility_atr(atr);
+
+    assert_eq!(signal.entry_price, Some(ep));
+    assert_eq!(signal.stop_loss, Some(sl));
+    assert_eq!(signal.take_profit, Some(tp));
+    assert_eq!(signal.volatility_atr, Some(atr));
+
+    let json = serde_json::to_string(&signal).unwrap();
+    let decoded: Signal = serde_json::from_str(&json).unwrap();
+    assert_eq!(signal, decoded);
 }
 
 #[test]
@@ -520,4 +552,217 @@ fn test_fee_breakdown_total_and_with_fee_breakdown() {
     .with_fee(Money::inr(Decimal::from_str("5.00").unwrap()));
     assert_eq!(flat.fee, Money::inr(Decimal::from_str("5.00").unwrap()));
     assert!(flat.fee_breakdown.is_none());
+}
+
+#[test]
+fn test_trace_context_w3c_roundtrip() {
+    let trace_id = [
+        0x4b, 0xf9, 0x2f, 0x35, 0x77, 0xb3, 0x4d, 0xa6, 0xa3, 0xce, 0x92, 0x9d, 0x0e, 0x0e, 0x47,
+        0x36,
+    ];
+    let span_id = [0x00, 0xf0, 0x67, 0xaa, 0x0b, 0xa9, 0x02, 0xb7];
+    let ctx = TraceContext::new(trace_id, span_id, TraceContext::SAMPLED);
+
+    let header = ctx.to_traceparent();
+    assert_eq!(
+        header,
+        "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+    );
+
+    let parsed = TraceContext::from_traceparent(&header).unwrap();
+    assert_eq!(ctx, parsed);
+    assert!(parsed.is_sampled());
+
+    let new_span = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08];
+    let child = ctx.child_span(new_span);
+    assert_eq!(child.trace_id, trace_id);
+    assert_eq!(child.span_id, new_span);
+    assert_eq!(child.trace_flags, ctx.trace_flags);
+
+    // Serde roundtrip
+    let json = serde_json::to_string(&ctx).unwrap();
+    let decoded: TraceContext = serde_json::from_str(&json).unwrap();
+    assert_eq!(ctx, decoded);
+}
+
+#[test]
+fn test_order_wire_trace_context_roundtrip() {
+    let trace_ctx = TraceContext::new([1u8; 16], [2u8; 8], 1);
+    let order_req = OrderRequest::new(
+        instrument(),
+        OrderSide::Buy,
+        OrderType::Market,
+        Quantity::from_u64(10),
+        "algo-1",
+    )
+    .with_trace_context(trace_ctx);
+
+    assert_eq!(order_req.trace_context, Some(trace_ctx));
+    let json = serde_json::to_string(&order_req).unwrap();
+    let decoded: OrderRequest = serde_json::from_str(&json).unwrap();
+    assert_eq!(decoded.trace_context, Some(trace_ctx));
+
+    let ack = OrderAck::new(
+        "O-1",
+        order_req.client_order_id,
+        OrderStatus::New,
+        Utc::now(),
+    )
+    .with_trace_context(trace_ctx);
+    let json_ack = serde_json::to_string(&ack).unwrap();
+    let decoded_ack: OrderAck = serde_json::from_str(&json_ack).unwrap();
+    assert_eq!(decoded_ack.trace_context, Some(trace_ctx));
+
+    let fill = FillReport::new(
+        "F-1",
+        "O-1",
+        order_req.client_order_id,
+        instrument(),
+        OrderSide::Buy,
+        Price::from_rupees("2500.00").unwrap(),
+        Quantity::from_u64(10),
+        "algo-1",
+        Utc::now(),
+    )
+    .with_trace_context(trace_ctx);
+    let json_fill = serde_json::to_string(&fill).unwrap();
+    let decoded_fill: FillReport = serde_json::from_str(&json_fill).unwrap();
+    assert_eq!(decoded_fill.trace_context, Some(trace_ctx));
+}
+
+#[test]
+fn test_position_sizing_fixed_fractional() {
+    let equity = Money::inr(Decimal::from_str("100000.00").unwrap()); // 1,00,000 INR
+    let risk_budget = RiskBudget::new(
+        equity,
+        Decimal::from_str("0.01").unwrap(),
+        Quantity::from_u64(1),
+    ); // 1% risk = 1,000 INR
+
+    let entry = Price::from_rupees("2500.00").unwrap();
+    let stop = Price::from_rupees("2450.00").unwrap(); // per share risk = 50 INR
+
+    let req = PositionSizingRequest::new(
+        instrument(),
+        PositionSide::Long,
+        entry,
+        equity,
+        risk_budget,
+        SizingMethod::FixedFractional {
+            risk_pct: Decimal::from_str("0.01").unwrap(),
+        },
+    )
+    .with_stop_loss(stop);
+
+    let res = calculate_position_size(&req).unwrap();
+    // 1000 / 50 = 20 shares
+    assert_eq!(res.quantity, Quantity::from_u64(20));
+    assert_eq!(
+        res.allocated_notional,
+        Money::inr(Decimal::from_str("50000.00").unwrap())
+    );
+    assert_eq!(
+        res.risk_at_stake,
+        Money::inr(Decimal::from_str("1000.00").unwrap())
+    );
+    assert!(!res.capped_by_limit);
+}
+
+#[test]
+fn test_position_sizing_capping_and_limits() {
+    let equity = Money::inr(Decimal::from_str("1000000.00").unwrap());
+    let risk_budget = RiskBudget::new(
+        equity,
+        Decimal::from_str("0.02").unwrap(),
+        Quantity::from_u64(25),
+    )
+    .with_max_qty(Quantity::from_u64(100))
+    .with_freeze_limit(Quantity::from_u64(150))
+    .with_max_notional(Money::inr(Decimal::from_str("200000.00").unwrap()));
+
+    let entry = Price::from_rupees("1000.00").unwrap();
+    let stop = Price::from_rupees("950.00").unwrap(); // risk per share = 50 INR
+    // Risk amount = 20,000 INR -> raw shares = 400.
+    // Lot size is 25.
+    // But max_qty cap is 100, which is smaller than 400.
+
+    let req = PositionSizingRequest::new(
+        instrument(),
+        PositionSide::Long,
+        entry,
+        equity,
+        risk_budget,
+        SizingMethod::FixedFractional {
+            risk_pct: Decimal::from_str("0.02").unwrap(),
+        },
+    )
+    .with_stop_loss(stop);
+
+    let res = calculate_position_size(&req).unwrap();
+    assert_eq!(res.quantity, Quantity::from_u64(100));
+    assert!(res.capped_by_limit);
+    assert!(res.reason.unwrap().contains("capped by max_position_qty"));
+}
+
+#[test]
+fn test_position_sizer_hexagonal_port_object_safe() {
+    let equity = Money::inr(Decimal::from_str("50000.00").unwrap());
+    let budget = RiskBudget::new(
+        equity,
+        Decimal::from_str("0.01").unwrap(),
+        Quantity::from_u64(1),
+    );
+    let req = PositionSizingRequest::new(
+        instrument(),
+        PositionSide::Long,
+        Price::from_rupees("100.00").unwrap(),
+        equity,
+        budget,
+        SizingMethod::FixedNotional {
+            notional: Money::inr(Decimal::from_str("1000.00").unwrap()),
+        },
+    );
+
+    let sizer: Arc<dyn PositionSizer> = Arc::new(CanonicalPositionSizer);
+    let res = sizer.calculate_size(&req).unwrap();
+    assert_eq!(res.quantity, Quantity::from_u64(10));
+}
+
+#[test]
+fn test_domain_event_serde_roundtrip() {
+    let trace_ctx = TraceContext::new([3u8; 16], [4u8; 8], 1);
+    let now = Utc::now();
+
+    let event = DomainEvent::OrderPlaced {
+        order_id: "O-100".to_string(),
+        client_order_id: Uuid::new_v4(),
+        instrument: instrument(),
+        algo_id: "momentum-1".to_string(),
+        side: OrderSide::Buy,
+        quantity: Quantity::from_u64(50),
+        price: Some(Price::from_rupees("2450.00").unwrap()),
+        timestamp: now,
+        trace_context: Some(trace_ctx),
+    };
+
+    assert_eq!(event.timestamp(), now);
+    assert_eq!(event.trace_context(), Some(trace_ctx));
+
+    let json = serde_json::to_string(&event).unwrap();
+    let decoded: DomainEvent = serde_json::from_str(&json).unwrap();
+    assert_eq!(event, decoded);
+
+    let breached = DomainEvent::RiskBreached {
+        order_id: Some("O-101".to_string()),
+        instrument: instrument(),
+        rule_id: "max_notional_per_order".to_string(),
+        attempted_value: Decimal::from(500_000),
+        threshold_limit: Decimal::from(200_000),
+        message: "Order value 500000 exceeds limit 200000".to_string(),
+        timestamp: now,
+        trace_context: None,
+    };
+    let json_b = serde_json::to_string(&breached).unwrap();
+    let decoded_b: DomainEvent = serde_json::from_str(&json_b).unwrap();
+    assert_eq!(breached, decoded_b);
 }
