@@ -18,6 +18,8 @@ use crate::signal::Timeframe;
 use crate::sizing::{PositionSizingRequest, PositionSizingResult};
 use crate::types::InstrumentId;
 
+pub use crate::calendar::{SessionWindow, TradingCalendar};
+
 /// Errors a port implementation can return.
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum PortError {

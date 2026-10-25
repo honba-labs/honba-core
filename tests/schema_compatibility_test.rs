@@ -21,6 +21,9 @@ fn test_all_canonical_types_implement_valid_json_schema() {
     let _s_price = schema_for!(Price);
     let _s_qty = schema_for!(Quantity);
     let _s_money = schema_for!(Money);
+    let _s_country = schema_for!(CountryCode);
+    let _s_session = schema_for!(SessionWindow);
+    let _s_instrument = schema_for!(Instrument);
 }
 
 #[test]

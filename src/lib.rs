@@ -12,7 +12,9 @@
 //! - Canonical dynamic position sizing grammar ([`SizingMethod`], [`RiskBudget`], [`PositionSizingRequest`], [`PositionSizingResult`])
 //! - Tactical DDD first-class aggregate events ([`DomainEvent`])
 //! - Zero-dependency W3C distributed trace context carrier ([`TraceContext`])
+//! - Abstract exchange trading calendar port ([`TradingCalendar`])
 
+pub mod calendar;
 pub mod decision;
 pub mod error;
 pub mod events;
@@ -27,11 +29,13 @@ pub mod sizing;
 pub mod types;
 pub mod wire;
 
+pub use calendar::{SessionWindow, TradingCalendar};
 pub use decision::Decision;
 pub use error::CoreError;
 pub use events::{DomainEvent, ExecutionEvent, Reason, ReasonGroup, ReasonPolarity, TradingState};
 pub use instrument::{
-    DatasetId, Instrument, InstrumentKind, OptionType, PositionSide, TradeId, VenueOrderId,
+    DatasetId, Instrument, InstrumentKind, InstrumentProfile, OptionType, PositionSide, TradeId,
+    VenueOrderId,
 };
 pub use market::{Bar, DepthLevel, Tick};
 pub use order::{
@@ -57,7 +61,9 @@ pub use signal::{
 pub use sizing::{
     PositionSizingRequest, PositionSizingResult, RiskBudget, SizingMethod, calculate_position_size,
 };
-pub use types::{Currency, Exchange, InstrumentId, MinorUnit, Money, Price, PriceBand, Quantity};
+pub use types::{
+    CountryCode, Currency, Exchange, InstrumentId, MinorUnit, Money, Price, PriceBand, Quantity,
+};
 pub use wire::TraceContext;
 
 /// Version of the JSON wire contract, owned here because this crate owns the

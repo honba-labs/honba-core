@@ -8,7 +8,10 @@ use rust_decimal::Decimal;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{InstrumentId, Price, Quantity};
+use crate::types::{CountryCode, Currency, InstrumentId, Price, Quantity};
+
+/// Canonical alias for [`Instrument`] highlighting that it serves as the full reference-data profile.
+pub type InstrumentProfile = Instrument;
 
 /// Broad instrument classification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
@@ -57,13 +60,19 @@ impl PositionSide {
     }
 }
 
-/// Full reference-data record for a tradable instrument.
+/// Full reference-data record / profile for a tradable instrument.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Instrument {
     /// Canonical lookup key.
     pub id: InstrumentId,
     /// Broad classification.
     pub kind: InstrumentKind,
+    /// Quoted / base currency for pricing and valuation.
+    #[serde(default)]
+    pub currency: Currency,
+    /// Country / market jurisdiction code (e.g. IN, US, UK, JP).
+    #[serde(default)]
+    pub country: CountryCode,
     /// Exchange-mandated lot size.
     pub lot_size: Quantity,
     /// Minimum price movement.
@@ -88,6 +97,8 @@ impl Instrument {
         Self {
             id,
             kind: InstrumentKind::Equity,
+            currency: Currency::default(),
+            country: CountryCode::default(),
             lot_size,
             tick_size,
             expiry: None,
@@ -95,6 +106,18 @@ impl Instrument {
             option_type: None,
             underlying: None,
         }
+    }
+
+    /// Builder to set quoting currency.
+    pub fn with_currency(mut self, currency: Currency) -> Self {
+        self.currency = currency;
+        self
+    }
+
+    /// Builder to set country jurisdiction.
+    pub fn with_country(mut self, country: CountryCode) -> Self {
+        self.country = country;
+        self
     }
 }
 

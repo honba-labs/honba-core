@@ -9,6 +9,10 @@ pub enum CoreError {
     #[error("unknown exchange: '{0}' (expected NSE, BSE, or MCX)")]
     InvalidExchange(String),
 
+    /// Unknown country code
+    #[error("unknown country: '{0}' (expected IN, US, UK, or JP)")]
+    InvalidCountry(String),
+
     /// Invalid decimal string for price
     #[error("failed to parse decimal price: '{0}'")]
     InvalidPrice(String),

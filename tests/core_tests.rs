@@ -1,4 +1,4 @@
-use chrono::Utc;
+use chrono::{Datelike, Utc};
 use honba_core::*;
 use rust_decimal::Decimal;
 use std::str::FromStr;
@@ -765,4 +765,128 @@ fn test_domain_event_serde_roundtrip() {
     let json_b = serde_json::to_string(&breached).unwrap();
     let decoded_b: DomainEvent = serde_json::from_str(&json_b).unwrap();
     assert_eq!(breached, decoded_b);
+}
+
+#[test]
+fn test_country_code_display_parsing_and_serde() {
+    assert_eq!(CountryCode::In.code(), "IN");
+    assert_eq!(CountryCode::Us.code(), "US");
+    assert_eq!(CountryCode::Uk.code(), "UK");
+    assert_eq!(CountryCode::Jp.code(), "JP");
+
+    assert_eq!(CountryCode::from_str("IN").unwrap(), CountryCode::In);
+    assert_eq!(CountryCode::from_str("us").unwrap(), CountryCode::Us);
+    assert_eq!(CountryCode::from_str("UK").unwrap(), CountryCode::Uk);
+    assert_eq!(CountryCode::from_str("GB").unwrap(), CountryCode::Uk);
+    assert_eq!(CountryCode::from_str("jp").unwrap(), CountryCode::Jp);
+    assert!(CountryCode::from_str("XYZ").is_err());
+
+    let json = serde_json::to_string(&CountryCode::In).unwrap();
+    assert_eq!(json, "\"IN\"");
+    let decoded: CountryCode = serde_json::from_str(&json).unwrap();
+    assert_eq!(decoded, CountryCode::In);
+}
+
+#[test]
+fn test_instrument_profile_with_currency_and_country() {
+    let mut inst = Instrument::equity(
+        instrument(),
+        Quantity::from_u64(10),
+        Decimal::from_str("0.05").unwrap(),
+    );
+    assert_eq!(inst.currency, Currency::Inr);
+    assert_eq!(inst.country, CountryCode::In);
+
+    inst = inst
+        .with_currency(Currency::Usd)
+        .with_country(CountryCode::Us);
+    assert_eq!(inst.currency, Currency::Usd);
+    assert_eq!(inst.country, CountryCode::Us);
+
+    // Serialization roundtrip
+    let json = serde_json::to_string(&inst).unwrap();
+    let decoded: InstrumentProfile = serde_json::from_str(&json).unwrap();
+    assert_eq!(inst, decoded);
+
+    // Backward-compatibility: JSON without currency or country defaults to INR and IN
+    let legacy_json = serde_json::json!({
+        "id": {
+            "exchange": "NSE",
+            "symbol": "TCS"
+        },
+        "kind": "equity",
+        "lot_size": "1",
+        "tick_size": "0.05"
+    });
+    let parsed: Instrument = serde_json::from_value(legacy_json).unwrap();
+    assert_eq!(parsed.currency, Currency::Inr);
+    assert_eq!(parsed.country, CountryCode::In);
+}
+
+#[derive(Debug)]
+struct MockTradingCalendar {
+    offset: chrono::FixedOffset,
+    holidays: Vec<chrono::NaiveDate>,
+}
+
+impl TradingCalendar for MockTradingCalendar {
+    fn is_trading_day(&self, date: chrono::NaiveDate) -> bool {
+        let weekday = date.weekday();
+        if weekday == chrono::Weekday::Sat || weekday == chrono::Weekday::Sun {
+            return false;
+        }
+        !self.is_holiday(date)
+    }
+
+    fn is_holiday(&self, date: chrono::NaiveDate) -> bool {
+        self.holidays.contains(&date)
+    }
+
+    fn session_for_date(&self, date: chrono::NaiveDate) -> Option<SessionWindow> {
+        if self.is_trading_day(date) {
+            Some(SessionWindow::new(
+                chrono::NaiveTime::from_hms_opt(9, 15, 0).unwrap(),
+                chrono::NaiveTime::from_hms_opt(15, 30, 0).unwrap(),
+            ))
+        } else {
+            None
+        }
+    }
+
+    fn holidays(&self) -> Vec<chrono::NaiveDate> {
+        self.holidays.clone()
+    }
+
+    fn timezone_offset(&self) -> chrono::FixedOffset {
+        self.offset
+    }
+}
+
+#[test]
+fn test_trading_calendar_port_object_safe() {
+    let holiday = chrono::NaiveDate::from_ymd_opt(2026, 1, 26).unwrap();
+    let cal: Arc<dyn TradingCalendar> = Arc::new(MockTradingCalendar {
+        offset: chrono::FixedOffset::east_opt(5 * 3600 + 30 * 60).unwrap(),
+        holidays: vec![holiday],
+    });
+
+    let trading_day = chrono::NaiveDate::from_ymd_opt(2026, 1, 27).unwrap();
+    assert!(cal.is_trading_day(trading_day));
+    assert!(cal.is_holiday(holiday));
+    assert!(!cal.is_trading_day(holiday));
+
+    // Next trading day from Friday Jan 23 is Tuesday Jan 27 (since Jan 24/25 are weekend and Jan 26 is holiday)
+    let fri = chrono::NaiveDate::from_ymd_opt(2026, 1, 23).unwrap();
+    assert_eq!(cal.next_trading_day(fri), trading_day);
+
+    // Market open check
+    let open_utc = chrono::DateTime::parse_from_rfc3339("2026-01-27T04:00:00Z")
+        .unwrap()
+        .with_timezone(&Utc); // 04:00 UTC is 09:30 IST
+    assert!(cal.is_market_open(open_utc));
+
+    let closed_utc = chrono::DateTime::parse_from_rfc3339("2026-01-27T11:00:00Z")
+        .unwrap()
+        .with_timezone(&Utc); // 11:00 UTC is 16:30 IST
+    assert!(!cal.is_market_open(closed_utc));
 }

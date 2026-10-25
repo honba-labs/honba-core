@@ -386,3 +386,63 @@ impl PriceBand {
         price.0 >= self.lower.0 && price.0 <= self.upper.0
     }
 }
+
+/// Supported sovereign countries / market jurisdictions.
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    JsonSchema,
+    Default,
+)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum CountryCode {
+    /// India (IN)
+    #[default]
+    In,
+    /// United States of America (US)
+    Us,
+    /// United Kingdom (UK / GB)
+    Uk,
+    /// Japan (JP)
+    Jp,
+}
+
+impl CountryCode {
+    /// Two-letter country code (`"IN"`, `"US"`, `"UK"`, `"JP"`).
+    pub const fn code(&self) -> &'static str {
+        match self {
+            Self::In => "IN",
+            Self::Us => "US",
+            Self::Uk => "UK",
+            Self::Jp => "JP",
+        }
+    }
+}
+
+impl fmt::Display for CountryCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.code())
+    }
+}
+
+impl FromStr for CountryCode {
+    type Err = CoreError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_uppercase().as_str() {
+            "IN" => Ok(Self::In),
+            "US" => Ok(Self::Us),
+            "UK" | "GB" => Ok(Self::Uk),
+            "JP" => Ok(Self::Jp),
+            other => Err(CoreError::InvalidCountry(other.to_string())),
+        }
+    }
+}
